@@ -47,6 +47,16 @@ type Live2DChatPayload = {
 	}
 }
 
+type ActionController = {
+	run: (action: ActionType, hint: string, durationMs?: number) => void
+}
+
+type ChatEntry = {
+	id: string
+	role: 'user' | 'assistant' | 'system'
+	text: string
+}
+
 const CDN_SCRIPTS = [
 	'https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.2.0/browser/pixi.min.js',
 	'https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js',
@@ -55,6 +65,7 @@ const CDN_SCRIPTS = [
 
 const MODEL_URL = '/live2d/live2d.model3.json'
 const BASE_SCALE = 0.25
+const QUICK_PROMPTS = ['你好，介绍一下你自己', '你现在支持哪些能力？', '这个模型为什么不能换装？', '下一步应该怎么升级？']
 
 function loadScript(src: string): Promise<void> {
 	return new Promise((resolve, reject) => {
@@ -122,6 +133,9 @@ export default function Live2DViewer() {
 	const containerRef = useRef<HTMLDivElement>(null)
 	const inputRef = useRef<HTMLInputElement>(null)
 	const actionRunnerRef = useRef<(toolId: string) => void>(() => undefined)
+	const actionControllerRef = useRef<ActionController>({
+		run: () => undefined
+	})
 	const sessionIdRef = useRef(`visitor-${Date.now()}`)
 
 	const [status, setStatus] = useState<ViewerStatus>('loading')
@@ -130,6 +144,13 @@ export default function Live2DViewer() {
 	const [chatInput, setChatInput] = useState('')
 	const [followCursor, setFollowCursor] = useState(true)
 	const [isChatLoading, setIsChatLoading] = useState(false)
+	const [chatHistory, setChatHistory] = useState<ChatEntry[]>([
+		{
+			id: 'system-welcome',
+			role: 'system',
+			text: '这里是第二阶段 Live2D 对话面板。当前已接入数字分身代理，接口异常时会自动回退本地回复。'
+		}
+	])
 	const [meta, setMeta] = useState<ViewerMeta>({
 		hasMotions: false,
 		hasExpressions: false,
@@ -179,6 +200,14 @@ export default function Live2DViewer() {
 			action = nextAction
 			actionExpiresAt = performance.now() + 900
 			setMessage(hint)
+		}
+
+		actionControllerRef.current = {
+			run: (nextAction, hint, durationMs = 900) => {
+				action = nextAction
+				actionExpiresAt = performance.now() + durationMs
+				setMessage(hint)
+			}
 		}
 
 		actionRunnerRef.current = (toolId: string) => {
@@ -345,6 +374,7 @@ export default function Live2DViewer() {
 
 		return () => {
 			actionRunnerRef.current = () => undefined
+			actionControllerRef.current = { run: () => undefined }
 			window.clearInterval(idleTimer)
 			window.removeEventListener('resize', resizeTargets)
 			container.removeEventListener('pointermove', handlePointerMove)
@@ -363,14 +393,21 @@ export default function Live2DViewer() {
 		actionRunnerRef.current(toolId)
 	}
 
-	const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-		event.preventDefault()
-		const value = chatInput.trim()
+	const sendMessage = async (rawValue: string) => {
+		const value = rawValue.trim()
 		if (!value || isChatLoading) return
 
+		setChatHistory((current) => [
+			...current,
+			{
+				id: `user-${Date.now()}`,
+				role: 'user',
+				text: value
+			}
+		])
 		setIsChatLoading(true)
 		setChatInput('')
-		setMessage('正在连接数字分身接口...')
+		actionControllerRef.current.run('focus', '正在连接数字分身接口...', 1600)
 
 		try {
 			const response = await fetch('/api/live2d/chat', {
@@ -397,13 +434,35 @@ export default function Live2DViewer() {
 				payload.data?.raw ||
 				'接口已经连通，但没有返回可展示的 message 字段。'
 
-			setMessage(aiMessage)
+			actionControllerRef.current.run('nod', aiMessage, 1800)
+			setChatHistory((current) => [
+				...current,
+				{
+					id: `assistant-${Date.now()}`,
+					role: 'assistant',
+					text: aiMessage
+				}
+			])
 		} catch {
-			setMessage(buildFallbackReply(value))
+			const fallback = buildFallbackReply(value)
+			actionControllerRef.current.run('wave', fallback, 1800)
+			setChatHistory((current) => [
+				...current,
+				{
+					id: `assistant-${Date.now()}`,
+					role: 'assistant',
+					text: fallback
+				}
+			])
 		} finally {
 			setIsChatLoading(false)
 			inputRef.current?.focus()
 		}
+	}
+
+	const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault()
+		await sendMessage(chatInput)
 	}
 
 	return (
@@ -484,6 +543,35 @@ export default function Live2DViewer() {
 					<p className='mt-2 text-sm leading-6 text-[#7a6969]'>
 						这里已经接好了真实接口的服务端代理。只要补全环境变量里的 Supabase 函数地址，就会先走数字分身接口，失败时再回退到本地回复。
 					</p>
+					<div className='mt-4 flex flex-wrap gap-2'>
+						{QUICK_PROMPTS.map((prompt) => (
+							<button
+								key={prompt}
+								type='button'
+								disabled={isChatLoading}
+								onClick={() => void sendMessage(prompt)}
+								className='rounded-full border border-white/70 bg-white/80 px-3 py-2 text-xs text-[#6f5d5d] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60'
+							>
+								{prompt}
+							</button>
+						))}
+					</div>
+					<div className='mt-4 max-h-64 space-y-3 overflow-y-auto rounded-3xl border border-white/70 bg-white/65 p-3'>
+						{chatHistory.map((entry) => (
+							<div
+								key={entry.id}
+								className={`rounded-2xl px-4 py-3 text-sm leading-6 ${
+									entry.role === 'user'
+										? 'ml-8 bg-[#ef6b4a] text-white'
+										: entry.role === 'assistant'
+											? 'mr-4 bg-white text-[#5a4b4b]'
+											: 'border border-dashed border-white/70 bg-white/50 text-[#7a6969]'
+								}`}
+							>
+								{entry.text}
+							</div>
+						))}
+					</div>
 					<form className='mt-4 space-y-3' onSubmit={handleSubmit}>
 						<input
 							ref={inputRef}
