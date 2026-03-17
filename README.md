@@ -1,164 +1,210 @@
-# 2025 Blog
+# mianhua.me
 
-> 最新引导说明：https://www.yysuni.com/blog/readme
+`mianhua.me` 是一个基于 `Next.js` 的个人博客与内容站点，当前运行方式已经从原项目的 “GitHub App + 前端直推仓库” 改成了 “服务器本地存储 + 管理员登录保存”。
 
-该项目使用 Github App 管理项目内容，请保管好后续创建的 **Private key**，不要上传到公开网上。
+当前线上地址：
 
-## 1. 安装
+- [http://mianhua.me](http://mianhua.me)
+- [http://www.mianhua.me](http://www.mianhua.me)
 
-使用该项目可以先不做本地开发，直接部署然后配置环境变量。具体变量名请看下列大写变量
+## 当前架构
 
-```ts
-export const GITHUB_CONFIG = {
-	OWNER: process.env.NEXT_PUBLIC_GITHUB_OWNER || 'yysuni',
-	REPO: process.env.NEXT_PUBLIC_GITHUB_REPO || '2025-blog-public',
-	BRANCH: process.env.NEXT_PUBLIC_GITHUB_BRANCH || 'main',
-	APP_ID: process.env.NEXT_PUBLIC_GITHUB_APP_ID || '-'
-} as const
+核心变化：
+
+- 内容保存不再依赖 GitHub App 私钥
+- 普通访客只读
+- 管理员登录后可直接在前端编辑并保存
+- 内容落盘到服务器本地文件
+- 图片上传通过本站后端代理到图床
+- 仓库用于代码与内容同步，不承担在线编辑权限
+
+主要数据目录：
+
+- `data/`
+  - 首页配置
+  - 项目数据
+  - 图片页数据
+  - about 配置
+  - 管理员登录限流状态
+- `public/blogs/`
+  - 文章正文
+  - 文章配置
+  - 博客索引
+  - 文章内本地静态资源
+
+## 管理员能力
+
+当前站点支持管理员登录后在线编辑以下内容：
+
+- 首页配置
+- About
+- Projects
+- Pictures
+- Snippets
+- Bloggers
+- Share
+- Blog 列表
+- 新建 / 编辑 / 删除文章
+
+管理员登录方式：
+
+- 前端点击编辑入口
+- 弹出自定义管理员登录框
+- 登录成功后使用服务端 `cookie` 鉴权
+
+当前已做的安全控制：
+
+- 登录限流
+- 会话过期
+- 删除二次确认
+- 访客不可直接进入写作页
+
+## 图片上传
+
+新上传图片默认走图床：
+
+- 图床地址：`https://openclaw-tu.us.ci/`
+
+服务端环境变量：
+
+```bash
+IMAGE_HOST_BASE_URL=https://openclaw-tu.us.ci
+IMAGE_HOST_ENABLED=true
+IMAGE_HOST_AUTH_CODE=***
 ```
 
-也可以自己手动先调整安装，可自行 `pnpm i`
+覆盖范围：
 
-## 2. 部署
+- 首页 favicon / avatar / art / background
+- 社交按钮图标
+- 项目图片
+- 文章封面图
+- 文章正文图
 
-我这里熟悉 Vercel 部署，就以 Vercel 部署为例子。创建 Project => Import 这个项目
+说明：
 
-![](https://www.yysuni.com/blogs/readme/730266f17fab9717.png)
+- 历史本地图片仍可继续使用
+- 新图片优先保存为图床绝对 URL
+- 第一版不做远端图床删除
 
-无需配置，直接点部署
+## 本地开发
 
-![](https://www.yysuni.com/blogs/readme/95dee9a69154d0d0.png)
+安装依赖：
 
-大约 60 秒会部署完成，有一个直接 vercel 域名，如：https://2025-blog-public.vercel.app/
-
-到这里部署网站已经完成了，下一步创建 Github App
-
-## 3. 创建 Github App 链接仓库
-
-在 github 个人设置里面，找到最下面的 Developer Settings ，点击进入
-
-![](https://www.yysuni.com/blogs/readme/0abb3b592cbedad6.png)
-
-进入开发者页面，点击 **New Github App**
-
-*GitHub App name* 和 *Homepage URL* , 输入什么都不影响。Webhook 也关闭，不需要。
-
-![](https://www.yysuni.com/blogs/readme/71dcd9cf8ec967c0.png)
-
-只需要注意设置一个仓库 write 权限，其它不用。
-
-![](https://www.yysuni.com/blogs/readme/2be290016e56cd34.png)
-
-点击创建，谁能安装这个仓库这个选择无所谓。直接创建。
-
-![](https://www.yysuni.com/blogs/readme/aa002e6805ab2d65.png)
-
-
-### 创建密钥
-
-创建好 Github App 后会提示必须创建一个 **Private Key**，直接创建，会自动下载（不见了也不要紧，后面自己再创建再下载就行）。页面上有个 **App ID** 需要复制一下
-
-再切换到安装页面
-
-![](https://www.yysuni.com/blogs/readme/c122b1585bb7a46a.png)
-
-这里一定要只**授权当前项目**。
-
-![](https://www.yysuni.com/blogs/readme/2cf1cee3b04326f1.png)
-
-点击安装，就完成了 Github App 管理该仓库的权限设置了。下一步就是让前端知道推送那个项目，就是最开始提到的环境变量。（如果你不会设置环境变量，直接改仓库文件 `src/consts.ts` 也行。因为是公开的，所以环境变量意义也不大）
-
-直接输入这几个环境变量值就行，一般只用设置 OWNER 和 APP_ID。其它配置不用管，直接输入创建就行。
-
-![](https://www.yysuni.com/blogs/readme/c5a049d737848abf.png)
-
-设置完成后，需要手动再部署一次，让环境变量生效。
-* 可以直接 push 一次仓库代码会触发部署
-* 也可以手动选择创建一次部署
-![](https://www.yysuni.com/blogs/readme/59a802ed8d1c3a13.png)
-
-## 4. 完成
-
-现在，部署的这个网站就可以开始使用前端改内容了。比如更改一个分享内容。
-
-**提示**，网站前端页面删改完提示成功之后，你需要等待后台的部署完成，再刷新页面才能完成服务器内容的更新哦。
-
-## 5. 删除
-
-使用这个项目应该第一件事需要删除我的 blog，单独删除，批量删除已完成。
-
-## 6. 配置
-
-大部分页面右上角都会有一个编辑按钮，意味着你可以使用 **private key** 进行配置部署。
-
-### 6.1 网站配置
-
-首页有一个不显眼的配置按钮，点击就能看到现在可以配置的内容。
-
-![](https://www.yysuni.com/blogs/readme/cddb4710e08a5069.png)
-
-## 7. 写 blog
-
-写 blog 的图片管理，可能会有疑惑。图片管理推荐逻辑是先点击 **+ 号** 添加图片，（推荐先压缩好，尺寸推荐宽度不超过 1200）。然后将上传好的图片直接拖入文案编辑区，这就已经添加好了，点击右上角预览就可以看到效果。
-
-## 8. 写给非前端
-
-非前端配置内容，还是需要一个文件指引。下面写一些更细致的代码配置。
-
-### 8.1 移除 Liquid Grass
-
-进入 `src/layout/index.tsx` 文件，删除两行代码，然后提交代码到你的 github
-```tsx
-const LiquidGrass = dynamic(() => import('@/components/liquid-grass'), { ssr: false })
-// 中间省略...
-<LiquidGrass /> // 第 53 行
+```bash
+pnpm install
 ```
 
-![](https://www.yysuni.com/blogs/readme/f70ff3fe3a77f193.png)
+开发模式：
 
-### 8.2 配置首页内容
+```bash
+pnpm dev
+```
 
-首页的内容现在只能前端配置一部分，所以代码更改在 `src/app/(home)` 目录，这个目录代表首页所有文件。首页的具体文件为  `src/app/(home)/page.tsx`
+构建：
 
- ![](https://www.yysuni.com/blogs/readme/011679cd9bf73602.png)
+```bash
+pnpm build
+```
 
-这里可以看到有很多 `Card` 文件，需要改那个首页 Card 内容就可以点入那个具体文件修改。
+启动：
 
-比如中间的内容，为 `HiCard`，点击 `hi-card.tsx` 文件，即可更改其内容。
+```bash
+pnpm start
+```
 
-![](https://www.yysuni.com/blogs/readme/20b0791d012163ee.png)
+## 服务器部署
 
-## 9. 互助群
+当前线上环境：
 
-对于完全不是**程序员**的用户，确实会对于更新代码后，如何同步，如何**合并代码**手足无措。我创建了一个 **QQ群**（加群会简单点），或者 vx 群还是 tg 群会好一点可以 issue 里面说下就行。
+- Ubuntu
+- Node.js 通过 `nvm` 管理
+- `pnpm`
+- 应用监听 `3000`
+- `nginx` 监听 `80`
+- `nginx` 反代到 `127.0.0.1:3000`
+- Cloudflare 代理域名 `mianhua.me`
 
-QQ 群：[https://qm.qq.com/q/spdpenr4k2](https://qm.qq.com/q/spdpenr4k2)
-> 不好意思，之前的那个qq群ID（1021438316），不知道为啥搜不到😂
+典型部署命令：
 
-微信群：刚建好了一个微信群，没有 qq 的可以用这个微信群
-![](https://www.yysuni.com/blogs/readme/343f2c62035b8e23.webp)
+```bash
+pnpm install
+pnpm exec next build --webpack
+pnpm start -p 3000
+```
 
-tg 群：1月1号，才创建的 tg 群 https://t.me/public_blog_2025
+## GitHub 同步策略
 
+当前仓库：
 
-应该主要是我自己亲自帮助你们遇到问题怎么办。（后续看看有没有好心人）
+- [https://github.com/tangchunwu/mianhua.me](https://github.com/tangchunwu/mianhua.me)
 
-希望多多的非程序员加入 blogger 行列，web blog 还是很好玩的，属于自己的 blog 世界。
+同步原则：
 
-游戏资产不一定属于你的，你只有**使用权**，但这个 blog **网站、内容、仓库一定是属于你的**
+- 代码要进 Git
+- `data/` 要进 Git
+- `public/blogs/` 要进 Git
+- `.env.production` 不进 Git
+- 日志文件不进 Git
 
-#### 特殊的导航 Card
+这样做的目的：
 
-因为这个 Card 是全局都在的，所以放在了 `src/components` 目录
+- 避免“线上内容改了，但仓库没有”
+- 避免再次出现内容丢失后无法从版本库回滚
 
-![](https://www.yysuni.com/blogs/readme/9780c38f886322fd.png)
+## 备份
 
-## Star History
+当前已配置：
 
-<a href="https://www.star-history.com/#YYsuni/2025-blog-public&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=YYsuni/2025-blog-public&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=YYsuni/2025-blog-public&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=YYsuni/2025-blog-public&type=date&legend=top-left" />
- </picture>
-</a>
+- 服务器本地保留最近 3 份备份
+- 远端 S3 兼容对象存储定时备份
+
+备份重点：
+
+- `data/`
+- `public/blogs/`
+- `.env.production`
+
+说明：
+
+- GitHub 负责版本同步
+- 备份负责灾难恢复
+- 二者不是同一个东西
+
+## 目录说明
+
+主要目录：
+
+- `src/app/`
+  - 页面与 API 路由
+- `src/components/`
+  - 公共组件
+- `src/lib/`
+  - 服务端配置、管理员鉴权、图床、博客读写等能力
+- `data/`
+  - 运行期内容数据
+- `public/blogs/`
+  - 博客内容与资源
+
+关键接口：
+
+- `src/app/api/admin/login/route.ts`
+- `src/app/api/admin/logout/route.ts`
+- `src/app/api/admin/status/route.ts`
+- `src/app/api/config/route.ts`
+- `src/app/api/content/[key]/route.ts`
+- `src/app/api/blog/save/route.ts`
+- `src/app/api/blog/delete/route.ts`
+- `src/app/api/blog/listing/route.ts`
+- `src/app/api/image-host/upload/route.ts`
+
+## 备注
+
+这个仓库已经不是原始上游项目的默认工作流。
+
+当前仓库以 `mianhua.me` 实际线上运行状态为准，后续改动也应继续遵循这套原则：
+
+- 在线编辑走服务端保存
+- 内容同步进 GitHub
+- 敏感配置留在服务器环境变量
+
