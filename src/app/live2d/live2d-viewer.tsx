@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 
-import { hoverHints, idleHints, tapHints, toolHints } from './tips'
+import { defaultTipsConfig, Live2DHintGroup, Live2DTipsConfig } from './tips'
 
 interface PixiTicker {
 	add: (fn: (delta: number) => void) => void
@@ -64,8 +64,8 @@ const CDN_SCRIPTS = [
 ]
 
 const MODEL_URL = '/live2d/live2d.model3.json'
+const TIPS_URL = '/live2d/tips.json'
 const BASE_SCALE = 0.25
-const QUICK_PROMPTS = ['你好，介绍一下你自己', '你现在支持哪些能力？', '这个模型为什么不能换装？', '下一步应该怎么升级？']
 
 function loadScript(src: string): Promise<void> {
 	return new Promise((resolve, reject) => {
@@ -104,7 +104,10 @@ function buildFallbackReply(input: string) {
 		return '这只模型目前只有一张贴图，想做换装需要更完整的模型资源。'
 	}
 	if (text.includes('对话') || text.includes('聊天')) {
-		return '第二阶段已经预留了真实聊天接口，现在缺的是完整的上游地址。'
+		return '第二阶段已经预留了真实聊天接口，现在缺的是更强的角色设定和上下文记忆。'
+	}
+	if (text.includes('升级')) {
+		return '下一步应该优先换一套带 motions 和 expressions 的模型资源。'
 	}
 	if (text.includes('cotton') || text.includes('棉花')) {
 		return 'Cotton 这边会继续把这个角色做得更像站点陪伴助手。'
@@ -129,13 +132,28 @@ async function readModelMeta(): Promise<ViewerMeta> {
 	}
 }
 
+async function readTipsConfig(): Promise<Live2DTipsConfig> {
+	try {
+		const response = await fetch(TIPS_URL, { cache: 'no-store' })
+		if (!response.ok) return defaultTipsConfig
+		const data = (await response.json()) as Partial<Live2DTipsConfig>
+		return {
+			idleHints: data.idleHints?.length ? data.idleHints : defaultTipsConfig.idleHints,
+			hoverHints: data.hoverHints?.length ? data.hoverHints : defaultTipsConfig.hoverHints,
+			tapHints: data.tapHints?.length ? data.tapHints : defaultTipsConfig.tapHints,
+			quickPrompts: data.quickPrompts?.length ? data.quickPrompts : defaultTipsConfig.quickPrompts,
+			toolHints: data.toolHints?.length ? data.toolHints : defaultTipsConfig.toolHints
+		}
+	} catch {
+		return defaultTipsConfig
+	}
+}
+
 export default function Live2DViewer() {
 	const containerRef = useRef<HTMLDivElement>(null)
 	const inputRef = useRef<HTMLInputElement>(null)
 	const actionRunnerRef = useRef<(toolId: string) => void>(() => undefined)
-	const actionControllerRef = useRef<ActionController>({
-		run: () => undefined
-	})
+	const actionControllerRef = useRef<ActionController>({ run: () => undefined })
 	const sessionIdRef = useRef(`visitor-${Date.now()}`)
 
 	const [status, setStatus] = useState<ViewerStatus>('loading')
@@ -144,6 +162,7 @@ export default function Live2DViewer() {
 	const [chatInput, setChatInput] = useState('')
 	const [followCursor, setFollowCursor] = useState(true)
 	const [isChatLoading, setIsChatLoading] = useState(false)
+	const [tipsConfig, setTipsConfig] = useState<Live2DTipsConfig>(defaultTipsConfig)
 	const [chatHistory, setChatHistory] = useState<ChatEntry[]>([
 		{
 			id: 'system-welcome',
@@ -167,6 +186,10 @@ export default function Live2DViewer() {
 	)
 
 	useEffect(() => {
+		void readTipsConfig().then(setTipsConfig)
+	}, [])
+
+	useEffect(() => {
 		const container = containerRef.current
 		if (!container) return
 
@@ -187,7 +210,7 @@ export default function Live2DViewer() {
 			const width = container.clientWidth || 720
 			const height = container.clientHeight || 720
 			centerX = width / 2
-			centerY = height / 2 + 20
+			centerY = height / 2 + 40
 			targetX = centerX
 			targetY = centerY
 			currentX = centerX
@@ -196,22 +219,20 @@ export default function Live2DViewer() {
 			model.y = centerY
 		}
 
-		const playAction = (nextAction: ActionType, hint: string) => {
+		const playAction = (nextAction: ActionType, hint: string, durationMs = 900) => {
 			action = nextAction
-			actionExpiresAt = performance.now() + 900
+			actionExpiresAt = performance.now() + durationMs
 			setMessage(hint)
 		}
 
 		actionControllerRef.current = {
 			run: (nextAction, hint, durationMs = 900) => {
-				action = nextAction
-				actionExpiresAt = performance.now() + durationMs
-				setMessage(hint)
+				playAction(nextAction, hint, durationMs)
 			}
 		}
 
 		actionRunnerRef.current = (toolId: string) => {
-			const hint = toolHints.find((item) => item.id === toolId)
+			const hint = tipsConfig.toolHints.find((item) => item.id === toolId)
 			if (!hint) return
 
 			if (toolId === 'wardrobe') {
@@ -220,17 +241,17 @@ export default function Live2DViewer() {
 			}
 
 			if (toolId === 'wave') {
-				playAction('wave', hint.lines.join(' '))
+				playAction('wave', hint.lines.join(' '), 1300)
 				return
 			}
 
 			if (toolId === 'nod') {
-				playAction('nod', hint.lines.join(' '))
+				playAction('nod', hint.lines.join(' '), 1300)
 				return
 			}
 
 			if (toolId === 'greet') {
-				playAction('focus', pickRandom(hint.lines))
+				playAction('focus', pickRandom(hint.lines), 1300)
 				return
 			}
 
@@ -265,7 +286,7 @@ export default function Live2DViewer() {
 			currentX += (targetX - currentX) * ease
 			currentY += (targetY - currentY) * ease
 
-			const breathing = Math.sin(animationTime * 1.4) * 6
+			const breathing = Math.sin(animationTime * 1.4) * 7
 			const wave = action === 'wave' ? Math.sin(animationTime * 10) * 0.16 : 0
 			const nod = action === 'nod' ? Math.sin(animationTime * 12) * 16 : 0
 			const focusScale = action === 'focus' ? 0.03 : 0
@@ -282,7 +303,7 @@ export default function Live2DViewer() {
 		const init = async () => {
 			try {
 				setMessage('正在加载 Live2D 模型...')
-				const modelMeta = await readModelMeta()
+				const [modelMeta] = await Promise.all([readModelMeta()])
 				setMeta(modelMeta)
 
 				for (const src of CDN_SCRIPTS) {
@@ -342,20 +363,20 @@ export default function Live2DViewer() {
 				resizeTargets()
 
 				model.on?.('pointertap', () => {
-					playAction('focus', pickRandom(tapHints))
+					playAction('focus', pickRandom(tipsConfig.tapHints), 1400)
 				})
 
 				container.addEventListener('pointermove', handlePointerMove)
 				container.addEventListener('pointerleave', handlePointerLeave)
 				container.addEventListener('mouseenter', () => {
-					setMessage(pickRandom(hoverHints))
+					setMessage(pickRandom(tipsConfig.hoverHints))
 				})
 
 				window.addEventListener('resize', resizeTargets)
 				app.ticker.add(ticker)
 
 				setStatus('ready')
-				setMessage(pickRandom(idleHints))
+				setMessage(pickRandom(tipsConfig.idleHints))
 			} catch (err) {
 				setErrorMsg(err instanceof Error ? err.message : String(err))
 				setStatus('error')
@@ -368,7 +389,7 @@ export default function Live2DViewer() {
 			setMessage((current) => {
 				if (current.startsWith('当前模型')) return current
 				if (current.startsWith('正在连接数字分身')) return current
-				return pickRandom(idleHints)
+				return pickRandom(tipsConfig.idleHints)
 			})
 		}, 12000)
 
@@ -387,7 +408,7 @@ export default function Live2DViewer() {
 
 			container.innerHTML = ''
 		}
-	}, [followCursor])
+	}, [followCursor, tipsConfig])
 
 	const runToolAction = (toolId: string) => {
 		actionRunnerRef.current(toolId)
@@ -465,15 +486,17 @@ export default function Live2DViewer() {
 		await sendMessage(chatInput)
 	}
 
+	const visibleToolHints: Live2DHintGroup[] = useMemo(() => tipsConfig.toolHints.slice(0, 5), [tipsConfig.toolHints])
+
 	return (
-		<div className='grid w-full gap-6 lg:grid-cols-[minmax(0,1fr)_320px]'>
+		<div className='grid min-h-[760px] gap-6 xl:grid-cols-[minmax(0,1fr)_360px]'>
 			<div className='relative overflow-hidden rounded-[36px] border border-white/60 bg-white/45 p-6 shadow-[0_24px_80px_rgba(227,122,87,0.16)] backdrop-blur-xl'>
-				<div className='pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.85),_rgba(255,255,255,0.18)_45%,_rgba(255,203,145,0.2)_100%)]' />
-				<div className='relative flex min-h-[720px] flex-col'>
-					<div className='mb-5 flex flex-wrap items-center justify-between gap-3'>
+				<div className='pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.88),_rgba(255,255,255,0.22)_45%,_rgba(255,215,173,0.24)_100%)]' />
+				<div className='relative flex h-full flex-col'>
+					<div className='mb-4 flex flex-wrap items-start justify-between gap-3'>
 						<div>
 							<p className='text-[13px] font-semibold uppercase tracking-[0.28em] text-[#b5977b]'>Live2D Compat Layer</p>
-							<h2 className='mt-2 text-3xl font-semibold tracking-tight text-[#4b3d3d]'>对话、提示与动作兼容层</h2>
+							<h2 className='mt-2 text-3xl font-semibold tracking-tight text-[#4b3d3d]'>看板娘交互实验场</h2>
 						</div>
 						<div className='flex flex-wrap gap-2'>
 							{capabilitySummary.map((item) => (
@@ -487,14 +510,33 @@ export default function Live2DViewer() {
 						</div>
 					</div>
 
-					<div className='relative flex-1 overflow-hidden rounded-[28px] border border-white/65 bg-white/40'>
-						<div className='absolute left-6 top-6 z-10 max-w-[320px] rounded-[24px] border border-white/70 bg-white/85 px-4 py-3 shadow-[0_12px_32px_rgba(100,72,60,0.12)] backdrop-blur-md'>
-							<p className='text-sm leading-6 text-[#5d4d4d]'>{message}</p>
+					<div className='relative flex-1 overflow-hidden rounded-[30px] border border-white/65 bg-white/40 px-8 pb-4 pt-8'>
+						<div className='absolute left-8 top-6 z-20 max-w-[560px]'>
+							<div className='relative rounded-[28px] border border-[#e0ba8c] bg-[rgba(236,217,188,0.62)] px-6 py-5 text-[15px] leading-8 text-[#584949] shadow-[0_10px_30px_rgba(191,158,118,0.18)] backdrop-blur-md'>
+								{message}
+							</div>
 						</div>
-						<div
-							ref={containerRef}
-							className='absolute inset-0 h-full w-full bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.7),_rgba(255,234,207,0.18)_58%,_rgba(255,195,160,0.18)_100%)]'
-						/>
+
+						<div className='absolute inset-x-0 bottom-0 top-0 flex items-end justify-center'>
+							<div
+								ref={containerRef}
+								className='relative h-full w-full bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.74),_rgba(255,239,214,0.22)_58%,_rgba(255,196,157,0.18)_100%)]'
+							/>
+						</div>
+
+						<div className='absolute right-4 top-1/2 z-20 flex -translate-y-1/2 flex-col gap-3'>
+							{visibleToolHints.map((tool) => (
+								<button
+									key={tool.id}
+									type='button'
+									onClick={() => runToolAction(tool.id)}
+									className='min-w-[88px] rounded-2xl border border-white/75 bg-white/76 px-4 py-3 text-sm font-medium text-[#5d4d4d] shadow-[0_10px_24px_rgba(131,93,75,0.08)] transition hover:-translate-y-0.5 hover:bg-white'
+								>
+									{tool.label}
+								</button>
+							))}
+						</div>
+
 						{status === 'loading' && (
 							<div className='absolute inset-0 flex items-center justify-center text-sm text-[#8f7d7d]'>
 								正在加载 Live2D 模型...
@@ -511,22 +553,10 @@ export default function Live2DViewer() {
 
 			<div className='flex flex-col gap-4'>
 				<div className='rounded-[28px] border border-white/60 bg-white/50 p-5 shadow-[0_20px_60px_rgba(226,136,102,0.12)] backdrop-blur-xl'>
-					<h3 className='text-lg font-semibold text-[#4b3d3d]'>交互工具</h3>
+					<h3 className='text-lg font-semibold text-[#4b3d3d]'>交互设置</h3>
 					<p className='mt-2 text-sm leading-6 text-[#7a6969]'>
-						这里兼容的是 Halo 插件的交互层，不是直接复用插件代码。动作现在仍然用轻量动效模拟。
+						这里已经开始靠拢 sakura/plugin-live2d 的组织方式：消息、工具和快捷问题都从 `tips.json` 驱动。
 					</p>
-					<div className='mt-4 grid grid-cols-2 gap-3'>
-						{toolHints.map((tool) => (
-							<button
-								key={tool.id}
-								type='button'
-								onClick={() => runToolAction(tool.id)}
-								className='rounded-2xl border border-white/70 bg-white/75 px-3 py-3 text-sm font-medium text-[#5d4d4d] transition hover:-translate-y-0.5 hover:bg-white'
-							>
-								{tool.label}
-							</button>
-						))}
-					</div>
 					<label className='mt-4 flex items-center justify-between rounded-2xl border border-white/70 bg-white/70 px-4 py-3 text-sm text-[#5d4d4d]'>
 						<span>跟随鼠标</span>
 						<input
@@ -541,10 +571,10 @@ export default function Live2DViewer() {
 				<div className='rounded-[28px] border border-white/60 bg-white/50 p-5 shadow-[0_20px_60px_rgba(226,136,102,0.12)] backdrop-blur-xl'>
 					<h3 className='text-lg font-semibold text-[#4b3d3d]'>对话测试</h3>
 					<p className='mt-2 text-sm leading-6 text-[#7a6969]'>
-						这里已经接好了真实接口的服务端代理。只要补全环境变量里的 Supabase 函数地址，就会先走数字分身接口，失败时再回退到本地回复。
+						先走服务端代理请求数字分身接口，失败时自动回退本地回复。聊天记录会保留在右侧面板里。
 					</p>
 					<div className='mt-4 flex flex-wrap gap-2'>
-						{QUICK_PROMPTS.map((prompt) => (
+						{tipsConfig.quickPrompts.map((prompt) => (
 							<button
 								key={prompt}
 								type='button'
@@ -556,13 +586,13 @@ export default function Live2DViewer() {
 							</button>
 						))}
 					</div>
-					<div className='mt-4 max-h-64 space-y-3 overflow-y-auto rounded-3xl border border-white/70 bg-white/65 p-3'>
+					<div className='mt-4 max-h-72 space-y-3 overflow-y-auto rounded-3xl border border-white/70 bg-white/65 p-3'>
 						{chatHistory.map((entry) => (
 							<div
 								key={entry.id}
 								className={`rounded-2xl px-4 py-3 text-sm leading-6 ${
 									entry.role === 'user'
-										? 'ml-8 bg-[#ef6b4a] text-white'
+										? 'ml-10 bg-[#ef6b4a] text-white'
 										: entry.role === 'assistant'
 											? 'mr-4 bg-white text-[#5a4b4b]'
 											: 'border border-dashed border-white/70 bg-white/50 text-[#7a6969]'
