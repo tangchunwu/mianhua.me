@@ -1,6 +1,6 @@
-'use client'
+﻿'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import { toast } from 'sonner'
 import { ProjectCard, type Project } from './components/project-card'
@@ -10,6 +10,19 @@ import { useAuthStore } from '@/hooks/use-auth'
 import { useConfigStore } from '@/app/(home)/stores/config-store'
 import initialList from './list.json'
 import type { ImageItem } from './components/image-upload-dialog'
+import { ensureAdminAuth } from '@/lib/admin-client'
+import { loadServerContent } from '@/lib/content-client'
+
+function getProjectKey(project: Project): string {
+	return project.id || project.name
+}
+
+function ensureProjectIds(projects: Project[]): Project[] {
+	return projects.map(project => ({
+		...project,
+		id: project.id || crypto.randomUUID()
+	}))
+}
 
 export default function Page() {
 	const [projects, setProjects] = useState<Project[]>(initialList as Project[])
@@ -19,19 +32,33 @@ export default function Page() {
 	const [editingProject, setEditingProject] = useState<Project | null>(null)
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 	const [imageItems, setImageItems] = useState<Map<string, ImageItem>>(new Map())
-	const keyInputRef = useRef<HTMLInputElement>(null)
 
-	const { isAuth, setPrivateKey } = useAuthStore()
+	const { isAuth, loginWithPassword } = useAuthStore()
 	const { siteContent } = useConfigStore()
 	const hideEditButton = siteContent.hideEditButton ?? false
 
+	useEffect(() => {
+		loadServerContent<Project[]>('projects')
+			.then(serverProjects => {
+				const normalizedProjects = ensureProjectIds(serverProjects)
+				setProjects(normalizedProjects)
+				setOriginalProjects(normalizedProjects)
+			})
+			.catch(error => {
+				console.error('Failed to load projects:', error)
+				toast.error(error?.message || '加载内容失败')
+			})
+	}, [])
+
 	const handleUpdate = (updatedProject: Project, oldProject: Project, imageItem?: ImageItem) => {
-		setProjects(prev => prev.map(p => (p.url === oldProject.url ? updatedProject : p)))
+		const oldKey = getProjectKey(oldProject)
+		const nextProject = updatedProject.id ? updatedProject : { ...updatedProject, id: oldProject.id || crypto.randomUUID() }
+		setProjects(prev => prev.map(project => (getProjectKey(project) === oldKey ? nextProject : project)))
 		if (imageItem) {
 			setImageItems(prev => {
-				const newMap = new Map(prev)
-				newMap.set(updatedProject.url, imageItem)
-				return newMap
+				const next = new Map(prev)
+				next.set(getProjectKey(nextProject), imageItem)
+				return next
 			})
 		}
 	}
@@ -42,36 +69,19 @@ export default function Page() {
 	}
 
 	const handleSaveProject = (updatedProject: Project) => {
+		const nextProject = updatedProject.id ? updatedProject : { ...updatedProject, id: crypto.randomUUID() }
 		if (editingProject) {
-			const updated = projects.map(p => (p.url === editingProject.url ? updatedProject : p))
-			setProjects(updated)
-		} else {
-			setProjects([...projects, updatedProject])
+			const editingKey = getProjectKey(editingProject)
+			setProjects(prev => prev.map(project => (getProjectKey(project) === editingKey ? nextProject : project)))
+			return
 		}
+		setProjects(prev => [...prev, nextProject])
 	}
 
 	const handleDelete = (project: Project) => {
 		if (confirm(`确定要删除 ${project.name} 吗？`)) {
-			setProjects(projects.filter(p => p.url !== project.url))
-		}
-	}
-
-	const handleChoosePrivateKey = async (file: File) => {
-		try {
-			const text = await file.text()
-			setPrivateKey(text)
-			await handleSave()
-		} catch (error) {
-			console.error('Failed to read private key:', error)
-			toast.error('读取密钥文件失败')
-		}
-	}
-
-	const handleSaveClick = () => {
-		if (!isAuth) {
-			keyInputRef.current?.click()
-		} else {
-			handleSave()
+			const projectKey = getProjectKey(project)
+			setProjects(prev => prev.filter(item => getProjectKey(item) !== projectKey))
 		}
 	}
 
@@ -79,15 +89,17 @@ export default function Page() {
 		setIsSaving(true)
 
 		try {
-			await pushProjects({
+			const savedProjects = await pushProjects({
 				projects,
+				originalProjects,
 				imageItems
 			})
 
-			setOriginalProjects(projects)
+			setProjects(savedProjects)
+			setOriginalProjects(savedProjects)
 			setImageItems(new Map())
 			setIsEditMode(false)
-			toast.success('保存成功！')
+			toast.success('保存成功')
 		} catch (error: any) {
 			console.error('Failed to save:', error)
 			toast.error(`保存失败: ${error?.message || '未知错误'}`)
@@ -96,19 +108,27 @@ export default function Page() {
 		}
 	}
 
+	const handleSaveClick = async () => {
+		if (!(await ensureAdminAuth(isAuth, loginWithPassword))) return
+		await handleSave()
+	}
+
+	const handleEnterEditMode = async () => {
+		if (!(await ensureAdminAuth(isAuth, loginWithPassword))) return
+		setIsEditMode(true)
+	}
+
 	const handleCancel = () => {
 		setProjects(originalProjects)
 		setImageItems(new Map())
 		setIsEditMode(false)
 	}
 
-	const buttonText = isAuth ? '保存' : '导入密钥'
-
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if (!isEditMode && (e.ctrlKey || e.metaKey) && e.key === ',') {
 				e.preventDefault()
-				setIsEditMode(true)
+				void handleEnterEditMode()
 			}
 		}
 
@@ -116,26 +136,14 @@ export default function Page() {
 		return () => {
 			window.removeEventListener('keydown', handleKeyDown)
 		}
-	}, [isEditMode])
+	}, [isEditMode, isAuth, loginWithPassword])
 
 	return (
 		<>
-			<input
-				ref={keyInputRef}
-				type='file'
-				accept='.pem'
-				className='hidden'
-				onChange={async e => {
-					const f = e.target.files?.[0]
-					if (f) await handleChoosePrivateKey(f)
-					if (e.currentTarget) e.currentTarget.value = ''
-				}}
-			/>
-
 			<div className='flex flex-col items-center justify-center px-6 pt-32 pb-12'>
 				<div className='grid w-full max-w-[1200px] grid-cols-2 gap-6 max-md:grid-cols-1'>
-					{projects.map((project, index) => (
-						<ProjectCard key={project.url} project={project} isEditMode={isEditMode} onUpdate={handleUpdate} onDelete={() => handleDelete(project)} />
+					{projects.map(project => (
+						<ProjectCard key={getProjectKey(project)} project={project} isEditMode={isEditMode} onUpdate={handleUpdate} onDelete={() => handleDelete(project)} />
 					))}
 				</div>
 			</div>
@@ -159,7 +167,7 @@ export default function Page() {
 							添加
 						</motion.button>
 						<motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleSaveClick} disabled={isSaving} className='brand-btn px-6'>
-							{isSaving ? '保存中...' : buttonText}
+							{isSaving ? '保存中...' : '保存'}
 						</motion.button>
 					</>
 				) : (
@@ -167,7 +175,7 @@ export default function Page() {
 						<motion.button
 							whileHover={{ scale: 1.05 }}
 							whileTap={{ scale: 0.95 }}
-							onClick={() => setIsEditMode(true)}
+							onClick={() => void handleEnterEditMode()}
 							className='bg-card rounded-xl border px-6 py-2 text-sm backdrop-blur-sm transition-colors hover:bg-white/80'>
 							编辑
 						</motion.button>

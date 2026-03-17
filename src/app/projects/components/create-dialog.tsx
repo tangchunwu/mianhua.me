@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
@@ -61,7 +61,7 @@ export default function CreateDialog({ project, onClose, onSave }: CreateDialogP
 	}
 
 	const handleSubmit = () => {
-		if (!formData.name.trim() || !formData.image.trim() || !formData.url.trim() || !formData.description.trim()) {
+		if (!formData.name.trim() || !formData.image.trim() || !formData.description.trim()) {
 			toast.error('请填写所有必填项')
 			return
 		}
@@ -114,7 +114,7 @@ export default function CreateDialog({ project, onClose, onSave }: CreateDialogP
 								type='url'
 								value={formData.url}
 								onChange={e => setFormData({ ...formData, url: e.target.value })}
-								placeholder='https://example.com'
+								placeholder='https://example.com（可选）'
 								className='text-secondary flex-1 truncate text-xs focus:outline-none'
 							/>
 						</div>
@@ -126,7 +126,7 @@ export default function CreateDialog({ project, onClose, onSave }: CreateDialogP
 						type='text'
 						value={tagsInput}
 						onChange={e => handleTagsChange(e.target.value)}
-						placeholder='标签，用逗号分隔（如：React, Vue）'
+						placeholder='标签，用逗号分隔，例如 React, Vue'
 						className='w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm focus:outline-none'
 					/>
 					<div className='mt-2 flex flex-wrap gap-1.5'>

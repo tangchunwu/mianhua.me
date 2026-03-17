@@ -1,6 +1,6 @@
-'use client'
+﻿'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'motion/react'
 import { toast } from 'sonner'
 import { DialogModal } from '@/components/dialog-modal'
@@ -11,6 +11,7 @@ import type { SiteContent, CardStyles } from '../stores/config-store'
 import { SiteSettings, type FileItem, type ArtImageUploads, type BackgroundImageUploads, type SocialButtonImageUploads } from './site-settings'
 import { ColorConfig } from './color-config'
 import { HomeLayout } from './home-layout'
+import { ensureAdminAuth } from '@/lib/admin-client'
 
 interface ConfigDialogProps {
 	open: boolean
@@ -20,7 +21,7 @@ interface ConfigDialogProps {
 type TabType = 'site' | 'color' | 'layout'
 
 export default function ConfigDialog({ open, onClose }: ConfigDialogProps) {
-	const { isAuth, setPrivateKey } = useAuthStore()
+	const { isAuth, loginWithPassword } = useAuthStore()
 	const { siteContent, setSiteContent, cardStyles, setCardStyles, regenerateBubbles } = useConfigStore()
 	const [formData, setFormData] = useState<SiteContent>(siteContent)
 	const [cardStylesData, setCardStylesData] = useState<CardStyles>(cardStyles)
@@ -28,7 +29,6 @@ export default function ConfigDialog({ open, onClose }: ConfigDialogProps) {
 	const [originalCardStyles, setOriginalCardStyles] = useState<CardStyles>(cardStyles)
 	const [isSaving, setIsSaving] = useState(false)
 	const [activeTab, setActiveTab] = useState<TabType>('site')
-	const keyInputRef = useRef<HTMLInputElement>(null)
 	const [faviconItem, setFaviconItem] = useState<FileItem | null>(null)
 	const [avatarItem, setAvatarItem] = useState<FileItem | null>(null)
 	const [artImageUploads, setArtImageUploads] = useState<ArtImageUploads>({})
@@ -54,64 +54,26 @@ export default function ConfigDialog({ open, onClose }: ConfigDialogProps) {
 
 	useEffect(() => {
 		return () => {
-			// Clean up preview URLs on unmount
-			if (faviconItem?.type === 'file') {
-				URL.revokeObjectURL(faviconItem.previewUrl)
-			}
-			if (avatarItem?.type === 'file') {
-				URL.revokeObjectURL(avatarItem.previewUrl)
-			}
-			Object.values(artImageUploads).forEach(item => {
-				if (item.type === 'file') {
-					URL.revokeObjectURL(item.previewUrl)
-				}
-			})
-			Object.values(backgroundImageUploads).forEach(item => {
-				if (item.type === 'file') {
-					URL.revokeObjectURL(item.previewUrl)
-				}
-			})
-			Object.values(socialButtonImageUploads).forEach(item => {
-				if (item.type === 'file') {
-					URL.revokeObjectURL(item.previewUrl)
-				}
-			})
+			if (faviconItem?.type === 'file') URL.revokeObjectURL(faviconItem.previewUrl)
+			if (avatarItem?.type === 'file') URL.revokeObjectURL(avatarItem.previewUrl)
+			Object.values(artImageUploads).forEach(item => item.type === 'file' && URL.revokeObjectURL(item.previewUrl))
+			Object.values(backgroundImageUploads).forEach(item => item.type === 'file' && URL.revokeObjectURL(item.previewUrl))
+			Object.values(socialButtonImageUploads).forEach(item => item.type === 'file' && URL.revokeObjectURL(item.previewUrl))
 		}
 	}, [faviconItem, avatarItem, artImageUploads, backgroundImageUploads, socialButtonImageUploads])
-
-	const handleChoosePrivateKey = async (file: File) => {
-		try {
-			const text = await file.text()
-			setPrivateKey(text)
-			await handleSave()
-		} catch (error) {
-			console.error('Failed to read private key:', error)
-			toast.error('读取密钥文件失败')
-		}
-	}
-
-	const handleSaveClick = () => {
-		if (!isAuth) {
-			keyInputRef.current?.click()
-		} else {
-			handleSave()
-		}
-	}
 
 	const handleSave = async () => {
 		setIsSaving(true)
 		try {
-			// Calculate removed art images so that we can delete files in repo
 			const originalArtImages = originalData.artImages ?? []
 			const currentArtImages = formData.artImages ?? []
 			const removedArtImages = originalArtImages.filter(orig => !currentArtImages.some(current => current.id === orig.id))
 
-			// Calculate removed background images
 			const originalBackgroundImages = originalData.backgroundImages ?? []
 			const currentBackgroundImages = formData.backgroundImages ?? []
 			const removedBackgroundImages = originalBackgroundImages.filter(orig => !currentBackgroundImages.some(current => current.id === orig.id))
 
-			await pushSiteContent(
+			const saved = await pushSiteContent(
 				formData,
 				cardStylesData,
 				faviconItem,
@@ -122,9 +84,11 @@ export default function ConfigDialog({ open, onClose }: ConfigDialogProps) {
 				removedBackgroundImages,
 				socialButtonImageUploads
 			)
-			setSiteContent(formData)
-			setCardStyles(cardStylesData)
-			updateThemeVariables(formData.theme)
+			setSiteContent(saved.siteContent)
+			setCardStyles(saved.cardStyles)
+			setOriginalData(saved.siteContent)
+			setOriginalCardStyles(saved.cardStyles)
+			updateThemeVariables(saved.siteContent.theme)
 			setFaviconItem(null)
 			setAvatarItem(null)
 			setArtImageUploads({})
@@ -139,34 +103,22 @@ export default function ConfigDialog({ open, onClose }: ConfigDialogProps) {
 		}
 	}
 
+	const handleSaveClick = async () => {
+		if (!(await ensureAdminAuth(isAuth, loginWithPassword))) return
+		await handleSave()
+	}
+
 	const handleCancel = () => {
-		// Clean up preview URLs
-		if (faviconItem?.type === 'file') {
-			URL.revokeObjectURL(faviconItem.previewUrl)
-		}
-		if (avatarItem?.type === 'file') {
-			URL.revokeObjectURL(avatarItem.previewUrl)
-		}
-		Object.values(artImageUploads).forEach(item => {
-			if (item.type === 'file') {
-				URL.revokeObjectURL(item.previewUrl)
-			}
-		})
-		Object.values(backgroundImageUploads).forEach(item => {
-			if (item.type === 'file') {
-				URL.revokeObjectURL(item.previewUrl)
-			}
-		})
-		Object.values(socialButtonImageUploads).forEach(item => {
-			if (item.type === 'file') {
-				URL.revokeObjectURL(item.previewUrl)
-			}
-		})
-		// Restore to the state when dialog was opened
+		if (faviconItem?.type === 'file') URL.revokeObjectURL(faviconItem.previewUrl)
+		if (avatarItem?.type === 'file') URL.revokeObjectURL(avatarItem.previewUrl)
+		Object.values(artImageUploads).forEach(item => item.type === 'file' && URL.revokeObjectURL(item.previewUrl))
+		Object.values(backgroundImageUploads).forEach(item => item.type === 'file' && URL.revokeObjectURL(item.previewUrl))
+		Object.values(socialButtonImageUploads).forEach(item => item.type === 'file' && URL.revokeObjectURL(item.previewUrl))
+
 		setSiteContent(originalData)
 		setCardStyles(originalCardStyles)
 		regenerateBubbles()
-		// Restore document title and meta if they were changed by preview
+
 		if (typeof document !== 'undefined') {
 			document.title = originalData.meta.title
 			const metaDescription = document.querySelector('meta[name="description"]')
@@ -174,6 +126,7 @@ export default function ConfigDialog({ open, onClose }: ConfigDialogProps) {
 				metaDescription.setAttribute('content', originalData.meta.description)
 			}
 		}
+
 		updateThemeVariables(originalData.theme)
 		setFaviconItem(null)
 		setAvatarItem(null)
@@ -185,11 +138,8 @@ export default function ConfigDialog({ open, onClose }: ConfigDialogProps) {
 
 	const updateThemeVariables = (theme?: SiteContent['theme']) => {
 		if (typeof document === 'undefined' || !theme) return
-
 		const { colorBrand, colorBrandSecondary, colorPrimary, colorSecondary, colorBg, colorBorder, colorCard, colorArticle } = theme
-
 		const root = document.documentElement
-
 		if (colorBrand) root.style.setProperty('--color-brand', colorBrand)
 		if (colorBrandSecondary) root.style.setProperty('--color-brand-secondary', colorBrandSecondary)
 		if (colorPrimary) root.style.setProperty('--color-primary', colorPrimary)
@@ -201,12 +151,10 @@ export default function ConfigDialog({ open, onClose }: ConfigDialogProps) {
 	}
 
 	const handlePreview = () => {
-		console.log('formData', formData)
 		setSiteContent(formData)
 		setCardStyles(cardStylesData)
 		regenerateBubbles()
 
-		// Update document title
 		if (typeof document !== 'undefined') {
 			document.title = formData.meta.title
 			const metaDescription = document.querySelector('meta[name="description"]')
@@ -215,12 +163,10 @@ export default function ConfigDialog({ open, onClose }: ConfigDialogProps) {
 			}
 		}
 		updateThemeVariables(formData.theme)
-
 		onClose()
 	}
 
-	const buttonText = isAuth ? '保存' : '导入密钥'
-
+	const buttonText = isAuth ? '保存' : '管理员登录'
 	const tabs: { id: TabType; label: string }[] = [
 		{ id: 'site', label: '网站设置' },
 		{ id: 'color', label: '色彩配置' },
@@ -228,77 +174,59 @@ export default function ConfigDialog({ open, onClose }: ConfigDialogProps) {
 	]
 
 	return (
-		<>
-			<input
-				ref={keyInputRef}
-				type='file'
-				accept='.pem'
-				className='hidden'
-				onChange={async e => {
-					const f = e.target.files?.[0]
-					if (f) await handleChoosePrivateKey(f)
-					if (e.currentTarget) e.currentTarget.value = ''
-				}}
-			/>
-
-			<DialogModal open={open} onClose={handleCancel} className='card scrollbar-none max-h-[90vh] min-h-[600px] w-[640px] overflow-y-auto'>
-				<div className='mb-6 flex items-center justify-between'>
-					<div className='flex gap-1'>
-						{tabs.map(tab => (
-							<button
-								key={tab.id}
-								onClick={() => setActiveTab(tab.id)}
-								className={`relative px-4 py-2 text-sm font-medium transition-colors ${
-									activeTab === tab.id ? 'text-brand' : 'text-secondary hover:text-primary'
-								}`}>
-								{tab.label}
-								{activeTab === tab.id && <div className='bg-brand absolute right-0 bottom-0 left-0 h-0.5' />}
-							</button>
-						))}
-					</div>
-					<div className='flex gap-3'>
-						<motion.button
-							whileHover={{ scale: 1.05 }}
-							whileTap={{ scale: 0.95 }}
-							onClick={handlePreview}
-							className='bg-card rounded-xl border px-6 py-2 text-sm'>
-							预览
-						</motion.button>
-						<motion.button
-							whileHover={{ scale: 1.05 }}
-							whileTap={{ scale: 0.95 }}
-							onClick={handleCancel}
-							disabled={isSaving}
-							className='bg-card rounded-xl border px-6 py-2 text-sm'>
-							取消
-						</motion.button>
-						<motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleSaveClick} disabled={isSaving} className='brand-btn px-6'>
-							{isSaving ? '保存中...' : buttonText}
-						</motion.button>
-					</div>
+		<DialogModal open={open} onClose={handleCancel} className='card scrollbar-none max-h-[90vh] min-h-[600px] w-[640px] overflow-y-auto'>
+			<div className='mb-6 flex items-center justify-between'>
+				<div className='flex gap-1'>
+					{tabs.map(tab => (
+						<button
+							key={tab.id}
+							onClick={() => setActiveTab(tab.id)}
+							className={`relative px-4 py-2 text-sm font-medium transition-colors ${activeTab === tab.id ? 'text-brand' : 'text-secondary hover:text-primary'}`}>
+							{tab.label}
+							{activeTab === tab.id && <div className='bg-brand absolute right-0 bottom-0 left-0 h-0.5' />}
+						</button>
+					))}
 				</div>
-
-				<div className='min-h-[200px]'>
-					{activeTab === 'site' && (
-						<SiteSettings
-							formData={formData}
-							setFormData={setFormData}
-							faviconItem={faviconItem}
-							setFaviconItem={setFaviconItem}
-							avatarItem={avatarItem}
-							setAvatarItem={setAvatarItem}
-							artImageUploads={artImageUploads}
-							setArtImageUploads={setArtImageUploads}
-							backgroundImageUploads={backgroundImageUploads}
-							setBackgroundImageUploads={setBackgroundImageUploads}
-							socialButtonImageUploads={socialButtonImageUploads}
-							setSocialButtonImageUploads={setSocialButtonImageUploads}
-						/>
-					)}
-					{activeTab === 'color' && <ColorConfig formData={formData} setFormData={setFormData} />}
-					{activeTab === 'layout' && <HomeLayout cardStylesData={cardStylesData} setCardStylesData={setCardStylesData} onClose={onClose} />}
+				<div className='flex gap-3'>
+					<motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handlePreview} className='bg-card rounded-xl border px-6 py-2 text-sm'>
+						预览
+					</motion.button>
+					<motion.button
+						whileHover={{ scale: 1.05 }}
+						whileTap={{ scale: 0.95 }}
+						onClick={handleCancel}
+						disabled={isSaving}
+						className='bg-card rounded-xl border px-6 py-2 text-sm'>
+						取消
+					</motion.button>
+					<motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleSaveClick} disabled={isSaving} className='brand-btn px-6'>
+						{isSaving ? '保存中...' : buttonText}
+					</motion.button>
 				</div>
-			</DialogModal>
-		</>
+			</div>
+
+			<div className='min-h-[200px]'>
+				{activeTab === 'site' && (
+					<SiteSettings
+						formData={formData}
+						setFormData={setFormData}
+						faviconItem={faviconItem}
+						setFaviconItem={setFaviconItem}
+						avatarItem={avatarItem}
+						setAvatarItem={setAvatarItem}
+						artImageUploads={artImageUploads}
+						setArtImageUploads={setArtImageUploads}
+						backgroundImageUploads={backgroundImageUploads}
+						setBackgroundImageUploads={setBackgroundImageUploads}
+						socialButtonImageUploads={socialButtonImageUploads}
+						setSocialButtonImageUploads={setSocialButtonImageUploads}
+					/>
+				)}
+				{activeTab === 'color' && <ColorConfig formData={formData} setFormData={setFormData} />}
+				{activeTab === 'layout' && <HomeLayout cardStylesData={cardStylesData} setCardStylesData={setCardStylesData} onClose={onClose} />}
+			</div>
+		</DialogModal>
 	)
 }
+
+

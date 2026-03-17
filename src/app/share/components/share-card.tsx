@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import EditableStarRating from '@/components/editable-star-rating'
 import { useState } from 'react'
 import LogoUploadDialog, { type LogoItem } from './logo-upload-dialog'
+import { normalizeExternalUrl } from '@/lib/url-utils'
 
 export interface Share {
 	name: string
@@ -124,7 +125,7 @@ export function ShareCard({ share, isEditMode = false, onUpdate, onDelete }: Sha
 							</div>
 						) : (
 							<a
-								href={localShare.url}
+								href={normalizeExternalUrl(localShare.url)}
 								target='_blank'
 								rel='noopener noreferrer'
 								className='text-secondary hover:text-brand mt-1 block max-w-[200px] truncate text-xs hover:underline'>

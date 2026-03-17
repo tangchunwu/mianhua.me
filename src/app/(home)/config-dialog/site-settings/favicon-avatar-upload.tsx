@@ -6,13 +6,15 @@ import { hashFileSHA256 } from '@/lib/file-utils'
 import type { FileItem } from './types'
 
 interface FaviconAvatarUploadProps {
+	currentFaviconUrl?: string
 	faviconItem: FileItem | null
 	setFaviconItem: React.Dispatch<React.SetStateAction<FileItem | null>>
+	currentAvatarUrl?: string
 	avatarItem: FileItem | null
 	setAvatarItem: React.Dispatch<React.SetStateAction<FileItem | null>>
 }
 
-export function FaviconAvatarUpload({ faviconItem, setFaviconItem, avatarItem, setAvatarItem }: FaviconAvatarUploadProps) {
+export function FaviconAvatarUpload({ currentFaviconUrl, faviconItem, setFaviconItem, currentAvatarUrl, avatarItem, setAvatarItem }: FaviconAvatarUploadProps) {
 	const faviconInputRef = useRef<HTMLInputElement>(null)
 	const avatarInputRef = useRef<HTMLInputElement>(null)
 
@@ -55,7 +57,7 @@ export function FaviconAvatarUpload({ faviconItem, setFaviconItem, avatarItem, s
 					{faviconItem?.type === 'file' ? (
 						<img src={faviconItem.previewUrl} alt='favicon preview' className='h-full w-full object-cover' />
 					) : (
-						<img src='/favicon.png' alt='current favicon' className='h-full w-full object-cover' />
+						<img src={currentFaviconUrl || '/favicon.png'} alt='current favicon' className='h-full w-full object-cover' />
 					)}
 					<div className='pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-black/40 opacity-0 transition-opacity group-hover:opacity-100'>
 						<span className='text-xs text-white'>{faviconItem ? '更换' : '上传'}</span>
@@ -72,7 +74,7 @@ export function FaviconAvatarUpload({ faviconItem, setFaviconItem, avatarItem, s
 					{avatarItem?.type === 'file' ? (
 						<img src={avatarItem.previewUrl} alt='avatar preview' className='h-full w-full object-cover' />
 					) : (
-						<img src='/images/avatar.png' alt='current avatar' className='h-full w-full object-cover' />
+						<img src={currentAvatarUrl || '/images/avatar.png'} alt='current avatar' className='h-full w-full object-cover' />
 					)}
 					<div className='pointer-events-none absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100'>
 						<span className='text-xs text-white'>{avatarItem ? '更换' : '上传'}</span>

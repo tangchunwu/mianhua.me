@@ -22,6 +22,7 @@ import { toast } from 'sonner'
 import { useSize } from '@/hooks/use-size'
 import { HomeDraggableLayer } from './home-draggable-layer'
 import { createPortal } from 'react-dom'
+import { isRemoteUrl, normalizeExternalUrl } from '@/lib/url-utils'
 
 type SocialButtonType =
 	| 'github'
@@ -145,7 +146,7 @@ export default function SocialButtons() {
 			return (
 				<motion.a
 					key={button.id}
-					href={button.value}
+					href={normalizeExternalUrl(button.value)}
 					target='_blank'
 					{...commonProps}
 					className={`font-averia flex items-center gap-2 rounded-xl border bg-[#070707] text-xl text-white ${!hasLabel ? 'p-1.5' : 'px-3 py-1.5'}`}
@@ -163,7 +164,7 @@ export default function SocialButtons() {
 				qq: 'QQ号已复制到剪贴板'
 			}
 
-			const isImagePath = button.value.startsWith('/images/social-buttons/')
+			const isImagePath = button.value.startsWith('/images/social-buttons/') || isRemoteUrl(button.value)
 			const isOpen = openDropdowns[button.id] || false
 
 			if (isImagePath && (button.type === 'wechat' || button.type === 'qq')) {
@@ -236,7 +237,7 @@ export default function SocialButtons() {
 			return (
 				<motion.a
 					key={button.id}
-					href={button.value}
+					href={normalizeExternalUrl(button.value)}
 					target='_blank'
 					{...commonProps}
 					className='card relative flex items-center gap-2 rounded-xl px-3 py-2.5 font-medium whitespace-nowrap'>
@@ -248,7 +249,7 @@ export default function SocialButtons() {
 		return (
 			<motion.a
 				key={button.id}
-				href={button.value}
+				href={normalizeExternalUrl(button.value)}
 				target='_blank'
 				{...commonProps}
 				className={`card relative rounded-xl font-medium whitespace-nowrap ${hasLabel ? 'flex items-center gap-2 px-3 py-2.5' : 'p-1.5'}`}>
@@ -261,7 +262,7 @@ export default function SocialButtons() {
 	return (
 		<HomeDraggableLayer cardKey='socialButtons' x={x} y={y} width={styles.width} height={styles.height}>
 			<motion.div className='absolute max-sm:static' animate={{ left: x, top: y }} initial={{ left: x, top: y }}>
-				<div className='absolute top-0 left-0 flex flex-row-reverse items-center gap-3 max-sm:static' style={{ width: styles.width }}>
+				<div className='absolute top-0 left-0 flex items-center gap-3 max-sm:static' style={{ width: styles.width }}>
 					{sortedButtons.map(button => renderButton(button))}
 				</div>
 			</motion.div>

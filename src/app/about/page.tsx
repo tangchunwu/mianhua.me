@@ -1,6 +1,6 @@
-'use client'
+﻿'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import { toast } from 'sonner'
 import { useMarkdownRender } from '@/hooks/use-markdown-render'
@@ -10,6 +10,8 @@ import { useConfigStore } from '@/app/(home)/stores/config-store'
 import LikeButton from '@/components/like-button'
 import GithubSVG from '@/svgs/github.svg'
 import initialData from './list.json'
+import { ensureAdminAuth } from '@/lib/admin-client'
+import { loadServerContent } from '@/lib/content-client'
 
 export default function Page() {
 	const [data, setData] = useState<AboutData>(initialData as AboutData)
@@ -17,47 +19,33 @@ export default function Page() {
 	const [isEditMode, setIsEditMode] = useState(false)
 	const [isSaving, setIsSaving] = useState(false)
 	const [isPreviewMode, setIsPreviewMode] = useState(false)
-	const keyInputRef = useRef<HTMLInputElement>(null)
 
-	const { isAuth, setPrivateKey } = useAuthStore()
+	const { isAuth, loginWithPassword } = useAuthStore()
 	const { siteContent } = useConfigStore()
 	const { content, loading } = useMarkdownRender(data.content)
 	const hideEditButton = siteContent.hideEditButton ?? false
 
-	const handleChoosePrivateKey = async (file: File) => {
-		try {
-			const text = await file.text()
-			setPrivateKey(text)
-			await handleSave()
-		} catch (error) {
-			console.error('Failed to read private key:', error)
-			toast.error('读取密钥文件失败')
-		}
-	}
-
-	const handleSaveClick = () => {
-		if (!isAuth) {
-			keyInputRef.current?.click()
-		} else {
-			handleSave()
-		}
-	}
-
-	const handleEnterEditMode = () => {
-		setIsEditMode(true)
-		setIsPreviewMode(false)
-	}
+	useEffect(() => {
+		loadServerContent<AboutData>('about')
+			.then(serverData => {
+				setData(serverData)
+				setOriginalData(serverData)
+			})
+			.catch(error => {
+				console.error('Failed to load about content:', error)
+				toast.error(error?.message || '加载内容失败')
+			})
+	}, [])
 
 	const handleSave = async () => {
 		setIsSaving(true)
 
 		try {
 			await pushAbout(data)
-
 			setOriginalData(data)
 			setIsEditMode(false)
 			setIsPreviewMode(false)
-			toast.success('保存成功！')
+			toast.success('保存成功')
 		} catch (error: any) {
 			console.error('Failed to save:', error)
 			toast.error(`保存失败: ${error?.message || '未知错误'}`)
@@ -66,20 +54,28 @@ export default function Page() {
 		}
 	}
 
+	const handleSaveClick = async () => {
+		if (!(await ensureAdminAuth(isAuth, loginWithPassword))) return
+		await handleSave()
+	}
+
+	const handleEnterEditMode = async () => {
+		if (!(await ensureAdminAuth(isAuth, loginWithPassword))) return
+		setIsEditMode(true)
+		setIsPreviewMode(false)
+	}
+
 	const handleCancel = () => {
 		setData(originalData)
 		setIsEditMode(false)
 		setIsPreviewMode(false)
 	}
 
-	const buttonText = isAuth ? '保存' : '导入密钥'
-
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if (!isEditMode && (e.ctrlKey || e.metaKey) && e.key === ',') {
 				e.preventDefault()
-				setIsEditMode(true)
-				setIsPreviewMode(false)
+				void handleEnterEditMode()
 			}
 		}
 
@@ -87,22 +83,10 @@ export default function Page() {
 		return () => {
 			window.removeEventListener('keydown', handleKeyDown)
 		}
-	}, [isEditMode])
+	}, [isEditMode, isAuth])
 
 	return (
 		<>
-			<input
-				ref={keyInputRef}
-				type='file'
-				accept='.pem'
-				className='hidden'
-				onChange={async e => {
-					const f = e.target.files?.[0]
-					if (f) await handleChoosePrivateKey(f)
-					if (e.currentTarget) e.currentTarget.value = ''
-				}}
-			/>
-
 			<div className='flex flex-col items-center justify-center px-6 pt-32 pb-12 max-sm:px-0'>
 				<div className='w-full max-w-[800px]'>
 					{isEditMode ? (
@@ -200,11 +184,11 @@ export default function Page() {
 							whileTap={{ scale: 0.95 }}
 							onClick={() => setIsPreviewMode(prev => !prev)}
 							disabled={isSaving}
-							className={`rounded-xl border bg-white/60 px-6 py-2 text-sm`}>
+							className='rounded-xl border bg-white/60 px-6 py-2 text-sm'>
 							{isPreviewMode ? '继续编辑' : '预览'}
 						</motion.button>
 						<motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleSaveClick} disabled={isSaving} className='brand-btn px-6'>
-							{isSaving ? '保存中...' : buttonText}
+							{isSaving ? '保存中...' : '保存'}
 						</motion.button>
 					</>
 				) : (
@@ -212,7 +196,7 @@ export default function Page() {
 						<motion.button
 							whileHover={{ scale: 1.05 }}
 							whileTap={{ scale: 0.95 }}
-							onClick={handleEnterEditMode}
+							onClick={() => void handleEnterEditMode()}
 							className='rounded-xl border bg-white/60 px-6 py-2 text-sm backdrop-blur-sm transition-colors hover:bg-white/80'>
 							编辑
 						</motion.button>

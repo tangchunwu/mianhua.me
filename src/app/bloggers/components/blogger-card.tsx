@@ -8,6 +8,7 @@ import EditableStarRating from '@/components/editable-star-rating'
 import { Blogger, type BloggerStatus } from '../grid-view'
 import { useState } from 'react'
 import AvatarUploadDialog, { type AvatarItem } from './avatar-upload-dialog'
+import { normalizeExternalUrl } from '@/lib/url-utils'
 
 interface BloggerCardProps {
 	blogger: Blogger
@@ -108,7 +109,7 @@ export function BloggerCard({ blogger, isEditMode = false, onUpdate, onDelete }:
 							</div>
 						) : (
 							<a
-								href={localBlogger.url}
+								href={normalizeExternalUrl(localBlogger.url)}
 								target='_blank'
 								rel='noopener noreferrer'
 								className='text-secondary hover:text-brand mt-1 block max-w-[200px] truncate text-xs hover:underline'>

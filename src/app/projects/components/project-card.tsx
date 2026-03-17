@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { motion } from 'motion/react'
@@ -6,8 +6,10 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { useSize } from '@/hooks/use-size'
 import ImageUploadDialog, { type ImageItem } from './image-upload-dialog'
+import { normalizeExternalUrl } from '@/lib/url-utils'
 
 export interface Project {
+	id?: string
 	name: string
 	year: number
 	description: string
@@ -160,7 +162,7 @@ export function ProjectCard({ project, isEditMode = false, onUpdate, onDelete }:
 							type='url'
 							value={localProject.url}
 							onChange={e => handleFieldChange('url', e.target.value)}
-							placeholder='网站 URL'
+							placeholder='网站 URL（可选）'
 							className='bg-secondary/10 border-secondary/20 flex-1 rounded-lg border px-3 py-1.5 text-sm focus:outline-none'
 						/>
 						<input
@@ -180,16 +182,18 @@ export function ProjectCard({ project, isEditMode = false, onUpdate, onDelete }:
 					</>
 				) : (
 					<>
-						<Link
-							href={localProject.url}
-							target='_blank'
-							rel='noopener noreferrer'
-							className='bg-card hover:bg-bg rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors'>
-							Website
-						</Link>
+							{localProject.url?.trim() && (
+								<Link
+									href={normalizeExternalUrl(localProject.url)}
+									target='_blank'
+									rel='noopener noreferrer'
+									className='bg-card hover:bg-bg rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors'>
+									Website
+								</Link>
+							)}
 						{localProject.github && (
 							<Link
-								href={localProject.github}
+								href={normalizeExternalUrl(localProject.github)}
 								target='_blank'
 								rel='noopener noreferrer'
 								className='bg-card hover:bg-bg rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors'>
@@ -198,7 +202,7 @@ export function ProjectCard({ project, isEditMode = false, onUpdate, onDelete }:
 						)}
 						{localProject.npm && (
 							<Link
-								href={localProject.npm}
+								href={normalizeExternalUrl(localProject.npm)}
 								target='_blank'
 								rel='noopener noreferrer'
 								className='bg-card hover:bg-bg rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors'>
@@ -215,3 +219,4 @@ export function ProjectCard({ project, isEditMode = false, onUpdate, onDelete }:
 		</motion.div>
 	)
 }
+

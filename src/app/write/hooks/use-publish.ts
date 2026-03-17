@@ -1,24 +1,17 @@
-import { useCallback } from 'react'
-import { readFileAsText } from '@/lib/file-utils'
+﻿import { useCallback } from 'react'
 import { toast } from 'sonner'
 import { pushBlog } from '../services/push-blog'
 import { deleteBlog } from '../services/delete-blog'
 import { useWriteStore } from '../stores/write-store'
 import { useAuthStore } from '@/hooks/use-auth'
+import { ensureAdminAuth } from '@/lib/admin-client'
 
 export function usePublish() {
 	const { loading, setLoading, form, cover, images, mode, originalSlug } = useWriteStore()
-	const { isAuth, setPrivateKey } = useAuthStore()
-
-	const onChoosePrivateKey = useCallback(
-		async (file: File) => {
-			const pem = await readFileAsText(file)
-			setPrivateKey(pem)
-		},
-		[setPrivateKey]
-	)
+	const { isAuth, loginWithPassword } = useAuthStore()
 
 	const onPublish = useCallback(async () => {
+		if (!(await ensureAdminAuth(isAuth, loginWithPassword))) return
 		try {
 			setLoading(true)
 			await pushBlog({
@@ -37,7 +30,7 @@ export function usePublish() {
 		} finally {
 			setLoading(false)
 		}
-	}, [form, cover, images, mode, originalSlug, setLoading])
+	}, [form, cover, images, mode, originalSlug, setLoading, isAuth, loginWithPassword])
 
 	const onDelete = useCallback(async () => {
 		const targetSlug = originalSlug || form.slug
@@ -45,21 +38,22 @@ export function usePublish() {
 			toast.error('缺少 slug，无法删除')
 			return
 		}
+		if (!(await ensureAdminAuth(isAuth, loginWithPassword))) return
 		try {
 			setLoading(true)
 			await deleteBlog(targetSlug)
+			toast.success('删除成功')
 		} catch (err: any) {
 			console.error(err)
 			toast.error(err?.message || '删除失败')
 		} finally {
 			setLoading(false)
 		}
-	}, [form.slug, originalSlug, setLoading])
+	}, [form.slug, originalSlug, setLoading, isAuth, loginWithPassword])
 
 	return {
 		isAuth,
 		loading,
-		onChoosePrivateKey,
 		onPublish,
 		onDelete
 	}

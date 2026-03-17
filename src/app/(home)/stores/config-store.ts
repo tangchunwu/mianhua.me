@@ -10,8 +10,10 @@ interface ConfigStore {
 	cardStyles: CardStyles
 	regenerateKey: number
 	configDialogOpen: boolean
+	configLoaded: boolean
 	setSiteContent: (content: SiteContent) => void
 	setCardStyles: (styles: CardStyles) => void
+	loadRemoteConfig: () => Promise<void>
 	resetSiteContent: () => void
 	resetCardStyles: () => void
 	regenerateBubbles: () => void
@@ -23,11 +25,30 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 	cardStyles: { ...cardStyles },
 	regenerateKey: 0,
 	configDialogOpen: false,
+	configLoaded: false,
 	setSiteContent: (content: SiteContent) => {
 		set({ siteContent: content })
 	},
 	setCardStyles: (styles: CardStyles) => {
 		set({ cardStyles: styles })
+	},
+	loadRemoteConfig: async () => {
+		if (get().configLoaded) return
+		try {
+			const res = await fetch('/api/config', { cache: 'no-store' })
+			if (!res.ok) {
+				set({ configLoaded: true })
+				return
+			}
+			const data = await res.json()
+			if (data?.siteContent && data?.cardStyles) {
+				set({ siteContent: data.siteContent, cardStyles: data.cardStyles, configLoaded: true })
+				return
+			}
+		} catch {
+			// keep bundled defaults
+		}
+		set({ configLoaded: true })
 	},
 	resetSiteContent: () => {
 		set({ siteContent: { ...siteContent } })

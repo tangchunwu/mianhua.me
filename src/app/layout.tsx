@@ -1,9 +1,11 @@
-import '@/styles/globals.css'
+﻿import '@/styles/globals.css'
 
 import type { Metadata } from 'next'
 import Layout from '@/layout'
 import Head from '@/layout/head'
 import siteContent from '@/config/site-content.json'
+import { AdminAuthDialog } from '@/components/admin-auth-dialog'
+import { SiteRuntimeSync } from '@/components/site-runtime-sync'
 
 const {
 	meta: { title, description },
@@ -52,6 +54,8 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
 				/>
 
 				<Layout>{children}</Layout>
+				<SiteRuntimeSync />
+				<AdminAuthDialog />
 			</body>
 		</html>
 	)

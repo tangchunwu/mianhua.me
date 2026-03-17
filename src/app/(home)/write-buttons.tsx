@@ -1,4 +1,4 @@
-import { ANIMATION_DELAY, CARD_SPACING } from '@/consts'
+﻿import { ANIMATION_DELAY, CARD_SPACING } from '@/consts'
 import PenSVG from '@/svgs/pen.svg'
 import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
@@ -8,11 +8,14 @@ import { useRouter } from 'next/navigation'
 import { useSize } from '@/hooks/use-size'
 import DotsSVG from '@/svgs/dots.svg'
 import { HomeDraggableLayer } from './home-draggable-layer'
+import { useAuthStore } from '@/hooks/use-auth'
+import { ensureAdminAuth } from '@/lib/admin-client'
 
 export default function WriteButton() {
 	const center = useCenterStore()
 	const { cardStyles, setConfigDialogOpen, siteContent } = useConfigStore()
 	const { maxSM } = useSize()
+	const { isAuth, loginWithPassword } = useAuthStore()
 	const router = useRouter()
 	const styles = cardStyles.writeButtons
 	const hiCardStyles = cardStyles.hiCard
@@ -25,7 +28,6 @@ export default function WriteButton() {
 	}, [styles.order])
 
 	if (maxSM) return null
-
 	if (!show) return null
 
 	const x = styles.offsetX !== null ? center.x + styles.offsetX : center.x + CARD_SPACING + hiCardStyles.width / 2
@@ -34,28 +36,33 @@ export default function WriteButton() {
 	return (
 		<HomeDraggableLayer cardKey='writeButtons' x={x} y={y} width={styles.width} height={styles.height}>
 			<motion.div initial={{ left: x, top: y }} animate={{ left: x, top: y }} className='absolute flex items-center gap-4'>
-				<motion.button
-					onClick={() => router.push('/write')}
-					initial={{ opacity: 0, scale: 0.6 }}
-					animate={{ opacity: 1, scale: 1 }}
-					whileHover={{ scale: 1.05 }}
-					whileTap={{ scale: 0.95 }}
-					style={{ boxShadow: 'inset 0 0 12px rgba(255, 255, 255, 0.4)' }}
-					className='brand-btn whitespace-nowrap'>
-					{siteContent.enableChristmas && (
-						<>
-							<img
-								src='/images/christmas/snow-8.webp'
-								alt='Christmas decoration'
-								className='pointer-events-none absolute'
-								style={{ width: 60, left: -2, top: -4, opacity: 0.95 }}
-							/>
-						</>
-					)}
+				{isAuth && (
+					<motion.button
+						onClick={async () => {
+							if (!(await ensureAdminAuth(isAuth, loginWithPassword))) return
+							router.push('/write')
+						}}
+						initial={{ opacity: 0, scale: 0.6 }}
+						animate={{ opacity: 1, scale: 1 }}
+						whileHover={{ scale: 1.05 }}
+						whileTap={{ scale: 0.95 }}
+						style={{ boxShadow: 'inset 0 0 12px rgba(255, 255, 255, 0.4)' }}
+						className='brand-btn whitespace-nowrap'>
+						{siteContent.enableChristmas && (
+							<>
+								<img
+									src='/images/christmas/snow-8.webp'
+									alt='Christmas decoration'
+									className='pointer-events-none absolute'
+									style={{ width: 60, left: -2, top: -4, opacity: 0.95 }}
+								/>
+							</>
+						)}
 
-					<PenSVG />
-					<span>写文章</span>
-				</motion.button>
+						<PenSVG />
+						<span>写文章</span>
+					</motion.button>
+				)}
 				<motion.button
 					initial={{ opacity: 0, scale: 0.6 }}
 					animate={{ opacity: 1, scale: 1 }}

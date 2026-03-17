@@ -1,0 +1,132 @@
+[
+	{
+		"name": "Shorts Boost - 短视频增长工具",
+		"year": 2026,
+		"image": "https://openclaw-tu.us.ci/file/1773728872592_image.png",
+		"url": "",
+		"description": "Shorts Boost 是一套面向短视频创作者的效率工具前端项目，使用 React + TypeScript + Vite 构建，UI 基于 TailwindCSS + shadcn/ui（Radix UI），表单采用 React Hook Form + Zod 做校验，数据交互使用 React Query，并计划/支持对接 Supabase 实现账号、数据与内容管理能力",
+		"tags": [
+			"React",
+			"TypeScript",
+			"Vite",
+			"TailwindCSS",
+			"Supabase"
+		],
+		"github": "https://github.com/tangchunwu/shorts-boost",
+		"id": "b0c4b8f1757e484fbe2fb41013be4421"
+	},
+	{
+		"name": "16MBTI - 赛博恋爱宇宙",
+		"year": 2026,
+		"image": "https://openclaw-tu.us.ci/file/1773727805986_Cute_3D_rendered_app_icon_for_16MBTI_Cyber_Romanc-1773727569835__1_.png",
+		"url": "",
+		"description": "16MBTI 是一个“赛博恋爱宇宙”应用：把 16 种 MBTI 人格做成不同说话风格的 AI 角色。支持与任意人格单聊、多人群聊互动，以及“赛博法庭”上传聊天内容让 AI 法官评理；同时提供配对推荐与配对报告。项目包含 Node.js+Express 后端（JWT 认证 + PostgreSQL/Drizzle）、React+Vite Web 前端，以及微信小程序端；AI 能力通过 Dify 的多个应用/Agent 配置接入",
+		"tags": [
+			"Node.js",
+			"React",
+			"PostgreSQL",
+			"Dify"
+		],
+		"github": "https://github.com/tangchunwu/16MBTI",
+		"id": "d06005c991e7402aae0ad36c5bfa9a3a"
+	},
+	{
+		"name": "SoulMirror · 心镜",
+		"year": 2026,
+		"image": "https://openclaw-tu.us.ci/file/1773728643751_下载__1_.png",
+		"url": "https://soul-mirror.tech",
+		"description": "SoulMirror（灵魂之镜）是一个 自我觉察操作系统（Self-Awareness OS）：把分散在笔记、日志、聊天记录、日报等“死数据”活化成可连接、可生长的“活记忆”，帮助用户看见自己的行为模式与心理变化。\n前端基于 React + TypeScript + Vite，UI 使用 Tailwind + shadcn/ui + Framer Motion，并引入 React Three Fiber 实现 3D 沉浸式场景；后端采用 Supabase（PostgreSQL + pgvector + Edge Functions），支持向量检索/RAG 等能力；同时规划/集成 OpenClaw 插件式 Agent 任务执行与 MineContext 被动数据同步。",
+		"tags": [
+			"React",
+			"TypeScript",
+			"Vite",
+			"Tailwind CSS",
+			"Three.js(R3F)",
+			"Supabase",
+			"pgvector"
+		],
+		"id": "69fb4e0869094fc2a3cbc541ce29431f"
+	},
+	{
+		"name": "Cenima 2026（Job Life Simulator）",
+		"year": 2026,
+		"image": "https://openclaw-tu.us.ci/file/1773728814589_wechat_qr.png",
+		"url": "https://cenima.lovable.app",
+		"description": "cenima 2026 是一款复古像素风格的 Job Life Simulator Web 应用。玩家通过一系列“选项驱动”的职场事件推进进度，系统以四维数值（金钱/头发/智商/快乐）作为核心反馈与成长机制，并提供 15+ 结局与大量随机事件。前端基于 React + Vite + TypeScript，UI 使用 TailwindCSS + shadcn/ui（Radix），数据与认证采用 Supabase，状态/请求管理使用 TanStack React Query。",
+		"tags": [
+			"React",
+			"Vite",
+			"TypeScript",
+			"Supabase",
+			"TailwindCSS",
+			"shadcn/ui",
+			"Radix UI",
+			"TanStack Query",
+			"Pixel Art",
+			"Web App"
+		],
+		"github": "https://github.com/tangchunwu/cenima",
+		"id": "91bbe90ce1ed4999adb3d5709a3e3647"
+	},
+	{
+		"name": "IdeaScan",
+		"year": 2026,
+		"image": "https://openclaw-tu.us.ci/file/1773728161414_image.png",
+		"url": "https://ideascan.me",
+		"description": "IdeaScan 是一个 AI 需求验证与市场洞察平台：输入一个创业想法，自动进行关键词扩展、社媒（小红书/抖音）真实痛点抓取、竞品与趋势分析，并生成可追踪的验证报告（热度/竞争/可行性评分、痛点提取、用户画像、证据溯源）。支持 SSE 实时进度、多数据源降级（自爬 + 第三方兜底）、以及一键生成 MVP 落地页用于收集 Waitlist 信号。",
+		"tags": [
+			"AI",
+			"Startup",
+			"Market Research",
+			"Web Scraping",
+			"Xiaohongshu",
+			"Douyin",
+			"Supabase",
+			"React",
+			"TypeScript"
+		],
+		"github": "https://github.com/tangchunwu/IdeaScan",
+		"id": "b0cbd54eac834e79bd3e85807e0aae25"
+	},
+	{
+		"name": "自习室预约系统（studyspace）",
+		"year": 2026,
+		"image": "https://openclaw-tu.us.ci/file/1773733069341_image.png",
+		"url": "",
+		"description": "一个前后端分离的自习室预约系统，支持用户注册登录、浏览自习室列表与详情、按日期时间段查询座位可用性并创建预约，提供预约取消与签到等功能。 前端使用 React + TypeScript + Zustand + TailwindCSS + Vite 构建响应式界面；后端使用 Node.js + Express + TypeORM + PostgreSQL，采用 JWT 做鉴权，并加入基础的安全与性能优化（如 CORS 配置、缓存/限流等）。",
+		"tags": [
+			"小程序、web"
+		],
+		"github": "https://github.com/tangchunwu/studyspace",
+		"id": "b1771d3a33ea472ab9ba116ee9fcbdae"
+	},
+	{
+		"name": "善思 Blinko 智能收集器",
+		"year": 2026,
+		"image": "https://openclaw-tu.us.ci/file/1773731567442_image.png",
+		"url": "",
+		"description": "一个现代化的 Chrome 扩展，用于将网页内容智能收集到 Blinko 笔记系统。支持 Chrome Side Panel 侧边栏、AI 全文/选中文本摘要、个人想法记录、智能标签生成与可视化管理，并可一键整合提交为结构化笔记。，详细描述待补充。",
+		"tags": [
+			"Chrome 扩展",
+			"网页剪藏",
+			"AI 摘要",
+			"标签系统",
+			"知识管理",
+			"效率工具"
+		],
+		"github": "https://github.com/tangchunwu/blinko-smart-collector",
+		"id": "8701afce00d94b6dbbf96ac0af91fb44"
+	},
+	{
+		"name": "LLM API Key 批量检测器（浏览器扩展）",
+		"year": 2026,
+		"image": "https://openclaw-tu.us.ci/file/1773730507632_image.png",
+		"url": "",
+		"description": "一个现代化、完全本地运行的浏览器扩展，用于批量检测多个主流 LLM 服务商（OpenAI、Anthropic、Gemini、DeepSeek、OpenRouter 等）的 API Key 有效性与余额信息。所有请求由用户浏览器直接调用官方接口，不经过任何中间服务器；Key 仅保存在本地存储。支持多 Key 粘贴、并发检测、历史记录、亮/暗主题与精美 UI。",
+		"tags": [
+			"api-key检测"
+		],
+		"github": "https://github.com/tangchunwu/llm-api-key-checker-extension",
+		"id": "8e095e70647f4803adcd83838f32ba8b"
+	}
+]

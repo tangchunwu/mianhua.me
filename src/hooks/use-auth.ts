@@ -1,15 +1,14 @@
-import { create } from 'zustand'
-import { clearAllAuthCache, getAuthToken as getToken, hasAuth as checkAuth, getPemFromCache, savePemToCache } from '@/lib/auth'
+﻿import { create } from 'zustand'
+import { clearAllAuthCache, getAuthToken as getToken, getPemFromCache, savePemToCache } from '@/lib/auth'
 import { useConfigStore } from '@/app/(home)/stores/config-store'
+
 interface AuthStore {
-	// State
 	isAuth: boolean
 	privateKey: string | null
-
-	// Actions
 	setPrivateKey: (key: string) => void
-	clearAuth: () => void
-	refreshAuthState: () => void
+	loginWithPassword: (password: string) => Promise<void>
+	clearAuth: () => Promise<void>
+	refreshAuthState: () => Promise<void>
 	getAuthToken: () => Promise<string>
 }
 
@@ -25,13 +24,33 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 		}
 	},
 
-	clearAuth: () => {
+	loginWithPassword: async (password: string) => {
+		const res = await fetch('/api/admin/login', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ password })
+		})
+		if (!res.ok) {
+			const data = await res.json().catch(() => ({}))
+			throw new Error(data?.message || '管理员登录失败')
+		}
+		set({ isAuth: true })
+	},
+
+	clearAuth: async () => {
+		await fetch('/api/admin/logout', { method: 'POST' }).catch(() => void 0)
 		clearAllAuthCache()
-		set({ isAuth: false })
+		set({ isAuth: false, privateKey: null })
 	},
 
 	refreshAuthState: async () => {
-		set({ isAuth: await checkAuth() })
+		try {
+			const res = await fetch('/api/admin/status', { cache: 'no-store' })
+			const data = await res.json()
+			set({ isAuth: !!data?.authenticated })
+		} catch {
+			set({ isAuth: false })
+		}
 	},
 
 	getAuthToken: async () => {
@@ -41,14 +60,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 	}
 }))
 
-getPemFromCache().then((key) => {
+getPemFromCache().then(key => {
 	if (key) {
 		useAuthStore.setState({ privateKey: key })
 	}
 })
 
-checkAuth().then((isAuth) => {
-	if (isAuth) {
-		useAuthStore.setState({ isAuth })
-	}
-})
+useAuthStore.getState().refreshAuthState()
+

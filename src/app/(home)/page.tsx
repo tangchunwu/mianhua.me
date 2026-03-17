@@ -22,7 +22,7 @@ import SnowfallBackground from '@/layout/backgrounds/snowfall'
 
 export default function Home() {
 	const { maxSM } = useSize()
-	const { cardStyles, configDialogOpen, setConfigDialogOpen, siteContent } = useConfigStore()
+	const { cardStyles, configDialogOpen, setConfigDialogOpen, siteContent, loadRemoteConfig } = useConfigStore()
 	const editing = useLayoutEditStore(state => state.editing)
 	const saveEditing = useLayoutEditStore(state => state.saveEditing)
 	const cancelEditing = useLayoutEditStore(state => state.cancelEditing)
@@ -36,6 +36,10 @@ export default function Home() {
 		cancelEditing()
 		toast.info('已取消此次拖拽布局修改')
 	}
+
+	useEffect(() => {
+		loadRemoteConfig()
+	}, [loadRemoteConfig])
 
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
