@@ -8,6 +8,10 @@ export type PushProjectsParams = {
 	imageItems?: Map<string, ImageItem>
 }
 
+function getProjectKey(project: Project): string {
+	return project.id || project.name
+}
+
 function collectProjectImageUrls(projects: Project[]): string[] {
 	return projects
 		.map(project => project.image)
@@ -21,11 +25,11 @@ export async function pushProjects(params: PushProjectsParams): Promise<Project[
 	let uploadIndex = 0
 
 	if (imageItems && imageItems.size > 0) {
-		for (const [url, imageItem] of imageItems.entries()) {
+		for (const [projectKey, imageItem] of imageItems.entries()) {
 			if (imageItem.type !== 'file') continue
 			const upload = await createHashedUpload(imageItem.file, '/images/project', `upload:${uploadIndex++}`)
 			uploads.push(upload)
-			updatedProjects = updatedProjects.map(project => (project.url === url ? { ...project, image: upload.url } : project))
+			updatedProjects = updatedProjects.map(project => (getProjectKey(project) === projectKey ? { ...project, image: upload.url } : project))
 		}
 	}
 

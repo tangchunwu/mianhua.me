@@ -1,71 +1,104 @@
 # mianhua.me
 
-`mianhua.me` 是一个基于 `Next.js` 的个人博客与内容站点，当前运行方式已经从原项目的 “GitHub App + 前端直推仓库” 改成了 “服务器本地存储 + 管理员登录保存”。
+Personal blog and content site for [mianhua.me](https://mianhua.me), built with `Next.js` and adapted for direct server-side content editing.
 
-当前线上地址：
+## Overview
 
-- [http://mianhua.me](http://mianhua.me)
-- [http://www.mianhua.me](http://www.mianhua.me)
+This repository is no longer using the original "GitHub App + front-end commit" workflow.
 
-## 当前架构
+It now runs as a small self-hosted CMS:
 
-核心变化：
+- visitors can only read
+- the admin can log in from the front end
+- content is saved on the server
+- images are uploaded through a server-side proxy
+- GitHub is used for version sync, not as the live editing backend
 
-- 内容保存不再依赖 GitHub App 私钥
-- 普通访客只读
-- 管理员登录后可直接在前端编辑并保存
-- 内容落盘到服务器本地文件
-- 图片上传通过本站后端代理到图床
-- 仓库用于代码与内容同步，不承担在线编辑权限
+Live site:
 
-主要数据目录：
+- [https://mianhua.me](https://mianhua.me)
+- [https://www.mianhua.me](https://www.mianhua.me)
 
-- `data/`
-  - 首页配置
-  - 项目数据
-  - 图片页数据
-  - about 配置
-  - 管理员登录限流状态
-- `public/blogs/`
-  - 文章正文
-  - 文章配置
-  - 博客索引
-  - 文章内本地静态资源
+Repository:
 
-## 管理员能力
+- [https://github.com/tangchunwu/mianhua.me](https://github.com/tangchunwu/mianhua.me)
 
-当前站点支持管理员登录后在线编辑以下内容：
+## Features
 
-- 首页配置
+- Online admin editing for site content
+- Server-side content storage
+- Blog creation, editing, and deletion
+- Project / about / pictures / snippets / bloggers / share page editing
+- Image host integration for new uploads
+- GitHub sync for code and content history
+- Domain access via `nginx + Cloudflare`
+- Backup strategy for disaster recovery
+
+## Current Architecture
+
+```text
+Browser
+  -> Cloudflare
+  -> Nginx
+  -> Next.js app (:3000)
+  -> local content files (data/, public/blogs/)
+  -> image host proxy (openclaw-tu.us.ci)
+```
+
+### Runtime model
+
+- `Next.js` serves the site
+- `nginx` reverse proxies `mianhua.me` to `127.0.0.1:3000`
+- content is primarily stored in:
+  - `data/`
+  - `public/blogs/`
+- sensitive config stays in server env files
+- GitHub stores the versioned snapshot of code and content
+
+## What Changed From the Original Project
+
+The original upstream project was designed around GitHub-based content editing.
+
+This deployment has been changed to:
+
+- remove GitHub private-key based editing
+- add admin login and cookie auth
+- save content directly to the server
+- restrict editing to the admin only
+- route image uploads through a server-side image host integration
+
+## Editable Content
+
+The admin can edit these sections directly in the browser:
+
+- Home page settings
 - About
 - Projects
 - Pictures
 - Snippets
 - Bloggers
 - Share
-- Blog 列表
-- 新建 / 编辑 / 删除文章
+- Blog list
+- Write / edit / delete articles
 
-管理员登录方式：
+## Admin Auth
 
-- 前端点击编辑入口
-- 弹出自定义管理员登录框
-- 登录成功后使用服务端 `cookie` 鉴权
+Editing is protected by server-side auth.
 
-当前已做的安全控制：
+Implemented safeguards:
 
-- 登录限流
-- 会话过期
-- 删除二次确认
-- 访客不可直接进入写作页
+- login rate limiting
+- session expiration
+- delete confirmation
+- write page restricted to admin
 
-## 图片上传
+## Image Uploads
 
-新上传图片默认走图床：
+New uploaded images are routed through the image host:
 
-- 图床地址：`https://openclaw-tu.us.ci/`
+- `https://openclaw-tu.us.ci/`
 
-服务端环境变量：
+Relevant environment variables:
 
 ```bash
 IMAGE_HOST_BASE_URL=https://openclaw-tu.us.ci
@@ -73,120 +106,33 @@ IMAGE_HOST_ENABLED=true
 IMAGE_HOST_AUTH_CODE=***
 ```
 
-覆盖范围：
+Used for:
 
-- 首页 favicon / avatar / art / background
-- 社交按钮图标
-- 项目图片
-- 文章封面图
-- 文章正文图
+- favicon / avatar / home art / background
+- social button images
+- project images
+- article cover images
+- article body images
 
-说明：
+Notes:
 
-- 历史本地图片仍可继续使用
-- 新图片优先保存为图床绝对 URL
-- 第一版不做远端图床删除
+- old local images still work
+- new images prefer absolute hosted URLs
+- remote deletion is not implemented in the current version
 
-## 本地开发
+## Project Structure
 
-安装依赖：
-
-```bash
-pnpm install
+```text
+src/
+  app/                routes and API handlers
+  components/         shared UI components
+  lib/                auth, server config, blog IO, image host logic
+  stores/             UI state stores
+data/                 runtime content data
+public/blogs/         blog content and related assets
 ```
 
-开发模式：
-
-```bash
-pnpm dev
-```
-
-构建：
-
-```bash
-pnpm build
-```
-
-启动：
-
-```bash
-pnpm start
-```
-
-## 服务器部署
-
-当前线上环境：
-
-- Ubuntu
-- Node.js 通过 `nvm` 管理
-- `pnpm`
-- 应用监听 `3000`
-- `nginx` 监听 `80`
-- `nginx` 反代到 `127.0.0.1:3000`
-- Cloudflare 代理域名 `mianhua.me`
-
-典型部署命令：
-
-```bash
-pnpm install
-pnpm exec next build --webpack
-pnpm start -p 3000
-```
-
-## GitHub 同步策略
-
-当前仓库：
-
-- [https://github.com/tangchunwu/mianhua.me](https://github.com/tangchunwu/mianhua.me)
-
-同步原则：
-
-- 代码要进 Git
-- `data/` 要进 Git
-- `public/blogs/` 要进 Git
-- `.env.production` 不进 Git
-- 日志文件不进 Git
-
-这样做的目的：
-
-- 避免“线上内容改了，但仓库没有”
-- 避免再次出现内容丢失后无法从版本库回滚
-
-## 备份
-
-当前已配置：
-
-- 服务器本地保留最近 3 份备份
-- 远端 S3 兼容对象存储定时备份
-
-备份重点：
-
-- `data/`
-- `public/blogs/`
-- `.env.production`
-
-说明：
-
-- GitHub 负责版本同步
-- 备份负责灾难恢复
-- 二者不是同一个东西
-
-## 目录说明
-
-主要目录：
-
-- `src/app/`
-  - 页面与 API 路由
-- `src/components/`
-  - 公共组件
-- `src/lib/`
-  - 服务端配置、管理员鉴权、图床、博客读写等能力
-- `data/`
-  - 运行期内容数据
-- `public/blogs/`
-  - 博客内容与资源
-
-关键接口：
+Key server routes:
 
 - `src/app/api/admin/login/route.ts`
 - `src/app/api/admin/logout/route.ts`
@@ -198,13 +144,106 @@ pnpm start -p 3000
 - `src/app/api/blog/listing/route.ts`
 - `src/app/api/image-host/upload/route.ts`
 
-## 备注
+## Local Development
 
-这个仓库已经不是原始上游项目的默认工作流。
+Install dependencies:
 
-当前仓库以 `mianhua.me` 实际线上运行状态为准，后续改动也应继续遵循这套原则：
+```bash
+pnpm install
+```
 
-- 在线编辑走服务端保存
-- 内容同步进 GitHub
-- 敏感配置留在服务器环境变量
+Run in development:
+
+```bash
+pnpm dev
+```
+
+Build:
+
+```bash
+pnpm exec next build --webpack
+```
+
+Start:
+
+```bash
+pnpm start
+```
+
+## Production Deployment
+
+Current production stack:
+
+- Ubuntu
+- Node.js via `nvm`
+- `pnpm`
+- `Next.js` on port `3000`
+- `nginx` on port `80`
+- Cloudflare in front of the domain
+
+Typical deploy sequence:
+
+```bash
+pnpm install
+pnpm exec next build --webpack
+pnpm start -p 3000
+```
+
+## GitHub Sync Strategy
+
+GitHub is used as version history for the real running site state.
+
+Tracked on purpose:
+
+- source code
+- `data/`
+- `public/blogs/`
+
+Not tracked:
+
+- `.env.production`
+- runtime logs
+- temporary deployment files
+
+This matters because it prevents the common failure mode:
+
+> content changed on the server, but never made it into version control
+
+## Backup Strategy
+
+GitHub is not the backup layer by itself.
+
+Current backup focus:
+
+- `data/`
+- `public/blogs/`
+- `.env.production`
+
+Role split:
+
+- GitHub: version sync and history
+- backups: disaster recovery
+
+## Domain and Access
+
+The site is connected to:
+
+- `mianhua.me`
+- `www.mianhua.me`
+
+Current path:
+
+- Cloudflare DNS
+- `nginx` reverse proxy
+- Next.js origin on the server
+
+## Notes
+
+This repository should now be treated as the source of truth for the current `mianhua.me` deployment, not as a pristine mirror of the original upstream project.
+
+When updating this project, keep these rules:
+
+- online edits save to the server first
+- content changes should be synced back to GitHub
+- secrets stay out of the repository
 
