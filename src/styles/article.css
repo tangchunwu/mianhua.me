@@ -228,3 +228,94 @@
 	border: 1px solid rgba(0, 0, 0, 0.08);
 	border-radius: 8px;
 }
+
+/* About page prose */
+.about-prose {
+	font-size: 16px;
+	line-height: 1.95;
+	letter-spacing: 0.01em;
+	color: color-mix(in srgb, var(--color-primary) 82%, transparent);
+}
+
+.about-prose > :first-child {
+	margin-top: 0;
+}
+
+.about-prose p {
+	margin: 1.1em 0;
+}
+
+.about-prose h1,
+.about-prose h2,
+.about-prose h3 {
+	margin-top: 2.4em;
+	margin-bottom: 0.9em;
+	line-height: 1.2;
+	letter-spacing: -0.01em;
+}
+
+.about-prose h1::before,
+.about-prose h2::before,
+.about-prose h3::before {
+	font-weight: 800;
+	color: color-mix(in srgb, var(--color-brand) 72%, white);
+}
+
+.about-prose h2 {
+	font-size: 1.55rem;
+}
+
+.about-prose h3 {
+	font-size: 1.12rem;
+}
+
+.about-prose ul,
+.about-prose ol {
+	margin: 1.2em 0;
+	padding-left: 0;
+	list-style: none;
+}
+
+.about-prose li {
+	position: relative;
+	margin: 0.7em 0;
+	padding-left: 1.25rem;
+}
+
+.about-prose li::before {
+	content: '';
+	position: absolute;
+	top: 0.78em;
+	left: 0;
+	width: 0.42rem;
+	height: 0.42rem;
+	border-radius: 9999px;
+	background: linear-gradient(135deg, var(--color-brand), var(--color-brand-secondary));
+	box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-brand-secondary) 12%, transparent);
+}
+
+.about-prose strong {
+	color: color-mix(in srgb, var(--color-brand) 84%, black);
+	font-weight: 700;
+}
+
+.about-prose blockquote {
+	border-left-width: 0;
+	background:
+		linear-gradient(135deg, color-mix(in srgb, var(--color-brand-secondary) 18%, transparent), transparent 55%),
+		rgba(255, 255, 255, 0.38);
+	padding: 1rem 1.1rem;
+	border-radius: 18px;
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+}
+
+@media (max-width: 640px) {
+	.about-prose {
+		font-size: 15px;
+		line-height: 1.85;
+	}
+
+	.about-prose h2 {
+		font-size: 1.35rem;
+	}
+}

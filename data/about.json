@@ -1,5 +1,5 @@
 {
-	"title": "关于本站",
-	"description": "一个基于 Github 的现代化博客系统",
-	"content": "📦网站基于 Github 仓库完全存储，所有内容版本可控\n\n🚀无后端，无 serverless function，纯静态站点\n\n✏️文章通过可视化 UI 直接编辑并提交到 Github 仓库\n\n🔑所有用户都可以编辑，提交需要 Owner 的 Private Key\n\n## 技术栈\n\n- Next.js\n- React\n- TypeScript\n- Tailwind CSS\n- Motion\n- Github API"
+    "title": "关于我",
+    "description": "一个记录想法、项目、技术与生活片段的个人博客",
+    "content": "你好，我是 Cotton。\n\n这里是我的个人博客，也是我用来整理思考、记录项目和沉淀内容的地方。\n\n我会在这里写这些内容：\n\n- 正在做的产品和项目\n- 前端开发、AI 应用、工程实践\n- 一些灵感、笔记和复盘\n- 偶尔也会记录生活里的片段\n\n我更关注这些方向：\n\n- AI 产品与工作流\n- 前端工程化与交互体验\n- 个人效率系统\n- 从想法到产品落地的过程\n\n这个网站对我来说，不只是一个展示页，更像是持续更新的个人档案。\n\n如果你对我的项目、内容或者合作感兴趣，可以通过页面上的社交方式联系我。"
 }
