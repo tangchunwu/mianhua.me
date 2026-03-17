@@ -36,6 +36,17 @@ type ViewerMeta = {
 	textureCount: number
 }
 
+type Live2DChatPayload = {
+	ok?: boolean
+	error?: string
+	data?: {
+		message?: string
+		raw?: string
+		reply?: string
+		response?: string
+	}
+}
+
 const CDN_SCRIPTS = [
 	'https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.2.0/browser/pixi.min.js',
 	'https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js',
@@ -65,7 +76,7 @@ function pickRandom(lines: string[]) {
 	return lines[Math.floor(Math.random() * lines.length)]
 }
 
-function buildReply(input: string) {
+function buildFallbackReply(input: string) {
 	const text = input.trim().toLowerCase()
 
 	if (!text) return '你还没输入内容。'
@@ -73,22 +84,22 @@ function buildReply(input: string) {
 		return '你好，我在。'
 	}
 	if (text.includes('项目')) {
-		return '你可以先看项目页，再回来补充这个模型的动作和换装。'
+		return '你可以先看项目页，再回来继续扩展这个模型的动作和换装。'
 	}
 	if (text.includes('动作') || text.includes('motion')) {
-		return '当前模型没有内置 motions，所以这里只能用轻量交互动效模拟。'
+		return '当前模型没有内置 motions，所以这里只能先用轻量交互动效模拟。'
 	}
 	if (text.includes('换装') || text.includes('衣服') || text.includes('texture')) {
 		return '这只模型目前只有一张贴图，想做换装需要更完整的模型资源。'
 	}
 	if (text.includes('对话') || text.includes('聊天')) {
-		return '第一版先做本地对话，后面可以再接你的 API 做真正的角色聊天。'
+		return '第二阶段已经预留了真实聊天接口，现在缺的是完整的上游地址。'
 	}
 	if (text.includes('cotton') || text.includes('棉花')) {
-		return 'Cotton 这边的内容会继续往个人化和陪伴感方向做。'
+		return 'Cotton 这边会继续把这个角色做得更像站点陪伴助手。'
 	}
 
-	return '我先记下这句，后面可以把它接成真正的 AI 对话。'
+	return '接口不可用时，我会先用本地回复兜底。'
 }
 
 async function readModelMeta(): Promise<ViewerMeta> {
@@ -99,6 +110,7 @@ async function readModelMeta(): Promise<ViewerMeta> {
 
 	const data = await response.json()
 	const refs = data?.FileReferences ?? {}
+
 	return {
 		hasMotions: Boolean(refs.Motions && Object.keys(refs.Motions).length > 0),
 		hasExpressions: Array.isArray(refs.Expressions) && refs.Expressions.length > 0,
@@ -110,12 +122,14 @@ export default function Live2DViewer() {
 	const containerRef = useRef<HTMLDivElement>(null)
 	const inputRef = useRef<HTMLInputElement>(null)
 	const actionRunnerRef = useRef<(toolId: string) => void>(() => undefined)
+	const sessionIdRef = useRef(`visitor-${Date.now()}`)
 
 	const [status, setStatus] = useState<ViewerStatus>('loading')
 	const [errorMsg, setErrorMsg] = useState('')
 	const [message, setMessage] = useState('Live2D 兼容层加载中...')
 	const [chatInput, setChatInput] = useState('')
 	const [followCursor, setFollowCursor] = useState(true)
+	const [isChatLoading, setIsChatLoading] = useState(false)
 	const [meta, setMeta] = useState<ViewerMeta>({
 		hasMotions: false,
 		hasExpressions: false,
@@ -212,6 +226,7 @@ export default function Live2DViewer() {
 
 		const ticker = (delta: number) => {
 			if (!model) return
+
 			animationTime += delta / 60
 			if (action !== 'idle' && performance.now() > actionExpiresAt) {
 				action = 'idle'
@@ -262,6 +277,7 @@ export default function Live2DViewer() {
 						}) => PixiAppInstance
 					}
 				).Application
+
 				const Live2DModel = (
 					PIXI as {
 						live2d?: { Live2DModel: { from: (url: string) => Promise<Live2DModelInstance> } }
@@ -322,6 +338,7 @@ export default function Live2DViewer() {
 		const idleTimer = window.setInterval(() => {
 			setMessage((current) => {
 				if (current.startsWith('当前模型')) return current
+				if (current.startsWith('正在连接数字分身')) return current
 				return pickRandom(idleHints)
 			})
 		}, 12000)
@@ -332,10 +349,12 @@ export default function Live2DViewer() {
 			window.removeEventListener('resize', resizeTargets)
 			container.removeEventListener('pointermove', handlePointerMove)
 			container.removeEventListener('pointerleave', handlePointerLeave)
+
 			if (app) {
 				app.ticker.remove(ticker)
 				app.destroy({ removeView: true })
 			}
+
 			container.innerHTML = ''
 		}
 	}, [followCursor])
@@ -344,13 +363,47 @@ export default function Live2DViewer() {
 		actionRunnerRef.current(toolId)
 	}
 
-	const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+	const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault()
 		const value = chatInput.trim()
-		if (!value) return
-		setMessage(buildReply(value))
+		if (!value || isChatLoading) return
+
+		setIsChatLoading(true)
 		setChatInput('')
-		inputRef.current?.focus()
+		setMessage('正在连接数字分身接口...')
+
+		try {
+			const response = await fetch('/api/live2d/chat', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					message: value,
+					session_id: sessionIdRef.current
+				})
+			})
+
+			const payload = (await response.json()) as Live2DChatPayload
+
+			if (!response.ok || !payload.ok) {
+				throw new Error(payload.error || 'Live2D chat request failed')
+			}
+
+			const aiMessage =
+				payload.data?.message ||
+				payload.data?.reply ||
+				payload.data?.response ||
+				payload.data?.raw ||
+				'接口已经连通，但没有返回可展示的 message 字段。'
+
+			setMessage(aiMessage)
+		} catch {
+			setMessage(buildFallbackReply(value))
+		} finally {
+			setIsChatLoading(false)
+			inputRef.current?.focus()
+		}
 	}
 
 	return (
@@ -401,7 +454,7 @@ export default function Live2DViewer() {
 				<div className='rounded-[28px] border border-white/60 bg-white/50 p-5 shadow-[0_20px_60px_rgba(226,136,102,0.12)] backdrop-blur-xl'>
 					<h3 className='text-lg font-semibold text-[#4b3d3d]'>交互工具</h3>
 					<p className='mt-2 text-sm leading-6 text-[#7a6969]'>
-						这部分兼容的是 Halo 插件里的交互层，不是直接复用插件代码。动作现在用轻量动效模拟。
+						这里兼容的是 Halo 插件的交互层，不是直接复用插件代码。动作现在仍然用轻量动效模拟。
 					</p>
 					<div className='mt-4 grid grid-cols-2 gap-3'>
 						{toolHints.map((tool) => (
@@ -429,21 +482,23 @@ export default function Live2DViewer() {
 				<div className='rounded-[28px] border border-white/60 bg-white/50 p-5 shadow-[0_20px_60px_rgba(226,136,102,0.12)] backdrop-blur-xl'>
 					<h3 className='text-lg font-semibold text-[#4b3d3d]'>对话测试</h3>
 					<p className='mt-2 text-sm leading-6 text-[#7a6969]'>
-						先做本地对话回路。等你确认要接真实接口，再把这里替换成流式聊天。
+						这里已经接好了真实接口的服务端代理。只要补全环境变量里的 Supabase 函数地址，就会先走数字分身接口，失败时再回退到本地回复。
 					</p>
 					<form className='mt-4 space-y-3' onSubmit={handleSubmit}>
 						<input
 							ref={inputRef}
 							value={chatInput}
+							disabled={isChatLoading}
 							onChange={(event) => setChatInput(event.target.value)}
-							placeholder='输入一句话，例如：可以换装吗？'
-							className='w-full rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-sm text-[#4b3d3d] outline-none ring-0 placeholder:text-[#aa9c9c]'
+							placeholder='输入一句话，例如：你好，介绍一下你自己'
+							className='w-full rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-sm text-[#4b3d3d] outline-none ring-0 placeholder:text-[#aa9c9c] disabled:cursor-not-allowed disabled:opacity-60'
 						/>
 						<button
 							type='submit'
-							className='w-full rounded-2xl bg-[#ef6b4a] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#e85b37]'
+							disabled={isChatLoading}
+							className='w-full rounded-2xl bg-[#ef6b4a] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#e85b37] disabled:cursor-not-allowed disabled:opacity-60'
 						>
-							发送
+							{isChatLoading ? '请求中...' : '发送'}
 						</button>
 					</form>
 				</div>
