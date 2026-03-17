@@ -1,5 +1,7 @@
 # mianhua.me
 
+[English](./README.md) | [简体中文](./README.zh-CN.md)
+
 Personal blog and content site for [mianhua.me](https://mianhua.me), built with `Next.js` and adapted for direct server-side content editing.
 
 ## Overview
@@ -246,4 +248,3 @@ When updating this project, keep these rules:
 - online edits save to the server first
 - content changes should be synced back to GitHub
 - secrets stay out of the repository
-
