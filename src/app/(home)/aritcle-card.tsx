@@ -20,16 +20,14 @@ export default function ArticleCard() {
 
 	return (
 		<HomeDraggableLayer cardKey='articleCard' x={x} y={y} width={styles.width} height={styles.height}>
-			<Card order={styles.order} width={styles.width} height={styles.height} x={x} y={y} className='space-y-2 max-sm:static'>
+			<Card order={styles.order} width={styles.width} height={styles.height} x={x} y={y} className='space-y-2 max-md:mx-auto max-md:w-full max-md:max-w-[22rem] max-md:px-5 max-md:py-4 max-sm:static'>
 				{siteContent.enableChristmas && (
-					<>
-						<img
-							src='/images/christmas/snow-9.webp'
-							alt='Christmas decoration'
-							className='pointer-events-none absolute'
-							style={{ width: 140, left: -12, top: -16, opacity: 0.8 }}
-						/>
-					</>
+					<img
+						src='/images/christmas/snow-9.webp'
+						alt='Christmas decoration'
+						className='pointer-events-none absolute'
+						style={{ width: 140, left: -12, top: -16, opacity: 0.8 }}
+					/>
 				)}
 
 				<h2 className='text-secondary text-sm'>最新文章</h2>

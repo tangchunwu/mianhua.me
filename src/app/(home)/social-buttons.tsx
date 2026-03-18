@@ -52,11 +52,11 @@ interface SocialButtonConfig {
 export default function SocialButtons() {
 	const center = useCenterStore()
 	const { cardStyles, siteContent } = useConfigStore()
-	const { maxSM, init } = useSize()
+	const { maxMD, init } = useSize()
 	const styles = cardStyles.socialButtons
 	const hiCardStyles = cardStyles.hiCard
-	const order = maxSM && init ? 0 : styles.order
-	const delay = maxSM && init ? 0 : 100
+	const order = maxMD && init ? 0 : styles.order
+	const delay = maxMD && init ? 0 : 100
 
 	const sortedButtons = useMemo(() => {
 		const buttons = (siteContent.socialButtons || []) as SocialButtonConfig[]
@@ -105,7 +105,7 @@ export default function SocialButtons() {
 		}
 	}, [openDropdowns])
 
-	const x = styles.offsetX !== null ? center.x + styles.offsetX : center.x + hiCardStyles.width / 2 - styles.width
+	const x = styles.offsetX !== null ? center.x + styles.offsetX : center.x - styles.width / 2
 	const y = styles.offsetY !== null ? center.y + styles.offsetY : center.y + hiCardStyles.height / 2 + CARD_SPACING
 
 	if (!showStates.container) return null
@@ -139,7 +139,7 @@ export default function SocialButtons() {
 		}
 
 		const Icon = iconMap[button.type]
-		const hasLabel = Boolean(button.label)
+		const hasLabel = Boolean(button.label) && !maxMD
 		const iconSize = hasLabel ? 'size-6' : 'size-8'
 
 		if (button.type === 'github') {
@@ -149,7 +149,7 @@ export default function SocialButtons() {
 					href={normalizeExternalUrl(button.value)}
 					target='_blank'
 					{...commonProps}
-					className={`font-averia flex items-center gap-2 rounded-xl border bg-[#070707] text-xl text-white ${!hasLabel ? 'p-1.5' : 'px-3 py-1.5'}`}
+					className={`font-averia flex items-center gap-2 rounded-xl border bg-[#070707] text-xl text-white ${!hasLabel ? 'p-1.5' : 'px-3 py-1.5'} ${maxMD ? 'justify-center' : ''}`}
 					style={{ boxShadow: ' inset 0 0 12px rgba(255, 255, 255, 0.4)' }}>
 					<Icon className={'size-8'} />
 					{hasLabel && button.label}
@@ -240,7 +240,7 @@ export default function SocialButtons() {
 					href={normalizeExternalUrl(button.value)}
 					target='_blank'
 					{...commonProps}
-					className='card relative flex items-center gap-2 rounded-xl px-3 py-2.5 font-medium whitespace-nowrap'>
+					className='card relative flex items-center gap-2 rounded-xl px-3 py-2.5 font-medium whitespace-nowrap max-md:max-w-full max-md:truncate'>
 					{hasLabel ? button.label : button.value}
 				</motion.a>
 			)
@@ -261,8 +261,10 @@ export default function SocialButtons() {
 
 	return (
 		<HomeDraggableLayer cardKey='socialButtons' x={x} y={y} width={styles.width} height={styles.height}>
-			<motion.div className='absolute max-sm:static' animate={{ left: x, top: y }} initial={{ left: x, top: y }}>
-				<div className='absolute top-0 left-0 flex items-center gap-3 max-sm:static' style={{ width: styles.width }}>
+			<motion.div className='absolute max-md:static max-md:w-full' animate={{ left: x, top: y }} initial={{ left: x, top: y }}>
+				<div
+					className='absolute top-0 left-0 flex items-center gap-3 max-md:static max-md:mx-auto max-md:flex max-md:w-full max-md:max-w-[22rem] max-md:flex-wrap max-md:justify-center max-md:gap-2 max-md:rounded-[28px] max-md:bg-white/65 max-md:px-3 max-md:py-3 max-md:shadow-[0_20px_50px_rgba(0,0,0,0.06)] max-md:backdrop-blur'
+					style={{ width: styles.width }}>
 					{sortedButtons.map(button => renderButton(button))}
 				</div>
 			</motion.div>

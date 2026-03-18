@@ -34,6 +34,12 @@ app.log
 build.log
 redeploy.nohup.log
 deploy.status
+dev-live2d.log
+preview-live2d.log
+preview-live2d.err
+next-dev-*.log
+next-dev-*.err.log
+start-preview-live2d.cmd
 
 # env files (can opt-in for committing if needed)
 .env*

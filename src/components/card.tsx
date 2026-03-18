@@ -17,9 +17,9 @@ interface Props {
 }
 
 export default function Card({ children, order, width, height, x, y, className }: Props) {
-	const { maxSM, init } = useSize()
+	const { maxMD, init } = useSize()
 	let [show, setShow] = useState(false)
-	if (maxSM && init) order = 0
+	if (maxMD && init) order = 0
 
 	useEffect(() => {
 		if (show) return
@@ -31,6 +31,19 @@ export default function Card({ children, order, width, height, x, y, className }
 			order * ANIMATION_DELAY * 1000
 		)
 	}, [x, y, show])
+
+	if (show && maxMD && init)
+		return (
+			<motion.div
+				className={cn(
+					'bg-card relative w-full max-w-[32rem] rounded-[40px] border p-6 backdrop-blur-[4px] shadow-[0_40px_50px_-32px_rgba(0,0,0,0.05),inset_0_0_20px_rgba(255,255,255,0.25)]',
+					className
+				)}
+				initial={{ opacity: 0, scale: 0.94 }}
+				animate={{ opacity: 1, scale: 1 }}>
+				{children}
+			</motion.div>
+		)
 
 	if (show)
 		return (

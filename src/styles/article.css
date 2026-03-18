@@ -175,6 +175,52 @@
 	transform: scale(0.95);
 }
 
+.chat-prose p:first-child {
+	margin-top: 0;
+}
+
+.chat-prose p:last-child {
+	margin-bottom: 0;
+}
+
+.chat-prose pre {
+	background: rgba(255, 248, 244, 0.92);
+	border-color: rgba(239, 107, 74, 0.12);
+	border-radius: 14px;
+	padding: 0.9rem 1rem;
+	margin: 0.85rem 0 0.25rem;
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.chat-prose code {
+	background: rgba(239, 107, 74, 0.08);
+	border-color: rgba(239, 107, 74, 0.1);
+}
+
+.chat-prose .code-block-copy-btn {
+	opacity: 1;
+	background: rgba(255, 255, 255, 0.96);
+}
+
+.chat-prose blockquote {
+	margin: 0.75rem 0;
+	padding: 0.5rem 0.9rem;
+	border-left: 3px solid rgba(239, 107, 74, 0.3);
+	background: rgba(255, 255, 255, 0.48);
+	border-radius: 10px;
+}
+
+.chat-prose ul,
+.chat-prose ol {
+	margin: 0.65rem 0;
+	padding-left: 1.2rem;
+}
+
+.chat-prose img {
+	max-width: min(100%, 18rem);
+	margin: 0.85rem auto 0.2rem;
+}
+
 /* Images */
 .prose img {
 	max-width: 40%;

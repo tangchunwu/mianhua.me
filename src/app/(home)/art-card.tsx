@@ -22,7 +22,7 @@ export default function ArtCard() {
 
 	return (
 		<HomeDraggableLayer cardKey='artCard' x={x} y={y} width={styles.width} height={styles.height}>
-			<Card className='p-2 max-sm:static max-sm:translate-0' order={styles.order} width={styles.width} height={styles.height} x={x} y={y}>
+			<Card className='p-2 max-md:mx-auto max-md:w-full max-md:max-w-[22rem] max-md:p-2 max-sm:static max-sm:translate-0' order={styles.order} width={styles.width} height={styles.height} x={x} y={y}>
 				{siteContent.enableChristmas && (
 					<>
 						<img
@@ -34,7 +34,12 @@ export default function ArtCard() {
 					</>
 				)}
 
-				<img onClick={() => router.push('/pictures')} src={artUrl} alt='wall art' className='h-full w-full rounded-[32px] object-cover' />
+				<img
+					onClick={() => router.push('/pictures')}
+					src={artUrl}
+					alt='wall art'
+					className='h-full w-full rounded-[32px] object-cover max-md:aspect-square max-md:max-h-[23rem] max-md:object-contain'
+				/>
 			</Card>
 		</HomeDraggableLayer>
 	)

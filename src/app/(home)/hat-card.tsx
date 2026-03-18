@@ -9,7 +9,7 @@ import { HomeDraggableLayer } from './home-draggable-layer'
 export default function HatCard() {
 	const center = useCenterStore()
 	const { cardStyles, siteContent } = useConfigStore()
-	const { maxSM } = useSize()
+	const { maxMD } = useSize()
 	const styles = cardStyles.hatCard
 
 	const [show, setShow] = useState(false)
@@ -22,7 +22,7 @@ export default function HatCard() {
 	const hatIndex = siteContent.currentHatIndex ?? 1
 	const hatFlipped = siteContent.hatFlipped ?? false
 
-	if (maxSM) return null
+	if (maxMD) return null
 
 	if (!show) return null
 

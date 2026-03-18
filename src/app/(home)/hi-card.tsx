@@ -30,7 +30,7 @@ export default function HiCard() {
 
 	return (
 		<HomeDraggableLayer cardKey='hiCard' x={x} y={y} width={styles.width} height={styles.height}>
-			<Card order={styles.order} width={styles.width} height={styles.height} x={x} y={y} className='relative text-center max-sm:static max-sm:translate-0'>
+			<Card order={styles.order} width={styles.width} height={styles.height} x={x} y={y} className='relative text-center max-md:mx-auto max-md:w-full max-md:max-w-[22rem] max-md:px-5 max-md:py-6 max-sm:static max-sm:translate-0'>
 				{siteContent.enableChristmas && (
 					<>
 						<img
@@ -50,12 +50,12 @@ export default function HiCard() {
 				<Link href='/live2d'>
 					<img
 						src={siteContent.avatarUrl || '/images/avatar.png'}
-						className='mx-auto rounded-full object-cover'
+						className='mx-auto rounded-full object-cover max-md:h-24 max-md:w-24'
 						style={{ width: 120, height: 120, boxShadow: ' 0 16px 32px -5px #E2D9CE' }}
 					/>
 				</Link>
-				<h1 className='font-averia mt-3 text-2xl'>
-					{greeting} <br /> I'm <span className='text-linear text-[32px]'>{username}</span> , Nice to <br /> meet you!
+				<h1 className='font-averia mt-3 text-2xl leading-tight max-md:text-xl'>
+					{greeting} <br /> I'm <span className='text-linear text-[32px] max-md:text-[28px]'>{username}</span> , Nice to <br /> meet you!
 				</h1>
 			</Card>
 		</HomeDraggableLayer>

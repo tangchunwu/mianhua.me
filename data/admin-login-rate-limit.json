@@ -1,1 +1,7 @@
-{}
+{
+  "::ffff:127.0.0.1": {
+    "failedAttempts": 5,
+    "firstFailedAt": 1773841375133,
+    "lockedUntil": 1773843231085
+  }
+}
