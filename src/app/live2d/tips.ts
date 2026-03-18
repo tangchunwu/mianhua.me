@@ -1,4 +1,4 @@
-export type Live2DHintGroup = {
+﻿export type Live2DHintGroup = {
 	id: string
 	label: string
 	lines: string[]
@@ -31,7 +31,7 @@ export const defaultTipsConfig: Live2DTipsConfig = {
 		{
 			id: 'wave',
 			label: '招手',
-			lines: ['先来个招呼动作。', '当前模型没有内置 motion，这里先用轻量动画代替。']
+			lines: ['先来一个招呼动作。', '当前模型没有内置 motion，这里先用轻量动画代替。']
 		},
 		{
 			id: 'nod',

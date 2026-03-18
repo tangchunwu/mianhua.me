@@ -14,7 +14,7 @@ import { ensureAdminAuth } from '@/lib/admin-client'
 export default function WriteButton() {
 	const center = useCenterStore()
 	const { cardStyles, setConfigDialogOpen, siteContent } = useConfigStore()
-	const { maxSM } = useSize()
+	const { maxMD } = useSize()
 	const { isAuth, loginWithPassword } = useAuthStore()
 	const router = useRouter()
 	const styles = cardStyles.writeButtons
@@ -27,7 +27,7 @@ export default function WriteButton() {
 		setTimeout(() => setShow(true), styles.order * ANIMATION_DELAY * 1000)
 	}, [styles.order])
 
-	if (maxSM) return null
+	if (maxMD) return null
 	if (!show) return null
 
 	const x = styles.offsetX !== null ? center.x + styles.offsetX : center.x + CARD_SPACING + hiCardStyles.width / 2

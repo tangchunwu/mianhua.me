@@ -4,10 +4,12 @@ import { motion } from 'motion/react'
 import { useCenterStore } from '@/hooks/use-center'
 import { useConfigStore } from './stores/config-store'
 import { HomeDraggableLayer } from './home-draggable-layer'
+import { useSize } from '@/hooks/use-size'
 
 export default function LikePosition() {
 	const center = useCenterStore()
 	const { cardStyles, siteContent } = useConfigStore()
+	const { maxMD } = useSize()
 	const styles = cardStyles.likePosition
 	const hiCardStyles = cardStyles.hiCard
 	const socialButtonsStyles = cardStyles.socialButtons
@@ -20,6 +22,10 @@ export default function LikePosition() {
 		styles.offsetY !== null
 			? center.y + styles.offsetY
 			: center.y + hiCardStyles.height / 2 + CARD_SPACING + socialButtonsStyles.height + CARD_SPACING + musicCardStyles.height + CARD_SPACING
+
+	if (maxMD) {
+		return null
+	}
 
 	return (
 		<HomeDraggableLayer cardKey='likePosition' x={x} y={y} width={styles.width} height={styles.height}>
