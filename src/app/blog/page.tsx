@@ -26,7 +26,7 @@ dayjs.extend(weekOfYear)
 type DisplayMode = 'day' | 'week' | 'month' | 'year' | 'category'
 
 export default function BlogPage() {
-	const { items, loading } = useBlogIndex()
+	const { items, loading, mutate } = useBlogIndex()
 	const { categories: categoriesFromServer } = useCategories()
 	const { isRead } = useReadArticles()
 	const { isAuth, loginWithPassword } = useAuthStore()
@@ -190,9 +190,25 @@ export default function BlogPage() {
 			return
 		}
 		if (!(await confirmDeleteAction(`已选的 ${selectedCount} 篇文章`))) return
-		setEditableItems(prev => prev.filter(item => !selectedSlugs.has(item.slug)))
-		setSelectedSlugs(new Set())
-	}, [selectedCount, selectedSlugs])
+
+		const nextEditableItems = editableItems.filter(item => !selectedSlugs.has(item.slug))
+		const normalizedCategoryList = categoryList.map(category => category.trim()).filter(Boolean)
+
+		try {
+			setSaving(true)
+			await saveBlogEdits(items, nextEditableItems, normalizedCategoryList)
+			setEditableItems(nextEditableItems)
+			setSelectedSlugs(new Set())
+			setCategoryModalOpen(false)
+			await mutate()
+			toast.success(`已删除 ${selectedCount} 篇文章`)
+		} catch (error: any) {
+			console.error(error)
+			toast.error(error?.message || '删除失败')
+		} finally {
+			setSaving(false)
+		}
+	}, [selectedCount, selectedSlugs, editableItems, categoryList, items, mutate])
 
 	const handleAssignCategory = useCallback((slug: string, category?: string) => {
 		setEditableItems(prev =>
@@ -250,6 +266,7 @@ export default function BlogPage() {
 		try {
 			setSaving(true)
 			await saveBlogEdits(items, editableItems, normalizedCategoryList)
+			await mutate()
 			setEditMode(false)
 			setSelectedSlugs(new Set())
 			setCategoryModalOpen(false)
@@ -260,7 +277,7 @@ export default function BlogPage() {
 		} finally {
 			setSaving(false)
 		}
-	}, [items, editableItems, categoryList, categoriesFromServer])
+	}, [items, editableItems, categoryList, categoriesFromServer, mutate])
 
 	const handleSaveClick = useCallback(() => {
 		void handleSave()
@@ -407,8 +424,8 @@ export default function BlogPage() {
 						<motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={selectedCount === editableItems.length ? handleDeselectAll : handleSelectAll} className='rounded-xl border bg-white/60 px-4 py-2 text-sm transition-colors hover:bg-white/80'>
 							{selectedCount === editableItems.length ? '取消全选' : '全选'}
 						</motion.button>
-						<motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => void handleDeleteSelected()} disabled={selectedCount === 0} className='rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600 transition-colors disabled:opacity-60'>
-							删除(已选{selectedCount}篇)
+						<motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => void handleDeleteSelected()} disabled={selectedCount === 0 || saving} className='rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600 transition-colors disabled:opacity-60'>
+							{saving && selectedCount > 0 ? '删除中...' : `删除(已选${selectedCount}篇)`}
 						</motion.button>
 						<motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleSaveClick} disabled={saving} className='brand-btn px-6'>
 							{saving ? '保存中...' : buttonText}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import { toast } from 'sonner'
 import { useWriteStore } from '../../stores/write-store'
@@ -10,15 +10,15 @@ type CoverSectionProps = {
 }
 
 export function CoverSection({ delay = 0 }: CoverSectionProps) {
-	const { images, setCover, cover, addFiles } = useWriteStore()
+	const { images, setCover, cover, addFiles, addUrlImage } = useWriteStore()
 	const fileInputRef = useRef<HTMLInputElement>(null)
+	const [urlInput, setUrlInput] = useState('')
 
 	const coverPreviewUrl = cover ? (cover.type === 'url' ? cover.url : cover.previewUrl) : null
 
 	const handleCoverDrop = async (e: React.DragEvent<HTMLDivElement>) => {
 		e.preventDefault()
 
-		// 处理从图片列表中拖入的情况
 		const md = e.dataTransfer.getData('text/markdown') || e.dataTransfer.getData('text/plain') || ''
 		const m = /!\[\]\(([^)]+)\)/.exec(md.trim())
 		if (m) {
@@ -35,12 +35,10 @@ export function CoverSection({ delay = 0 }: CoverSectionProps) {
 			if (foundItem) {
 				setCover(foundItem)
 				toast.success('已设置封面')
-
 				return
 			}
 		}
 
-		// 处理直接拖入文件的情况
 		const files = e.dataTransfer.files
 		if (files && files.length > 0) {
 			const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'))
@@ -50,12 +48,10 @@ export function CoverSection({ delay = 0 }: CoverSectionProps) {
 			}
 
 			const resultImages = await addFiles(imageFiles as unknown as FileList)
-			if (resultImages && resultImages.length > 0) {
-				// 使用第一个图片作为封面
+			if (resultImages.length > 0) {
 				setCover(resultImages[0])
 				toast.success('已设置封面')
 			}
-			return
 		}
 	}
 
@@ -63,18 +59,24 @@ export function CoverSection({ delay = 0 }: CoverSectionProps) {
 		fileInputRef.current?.click()
 	}
 
+	const handleSetCoverUrl = () => {
+		const item = addUrlImage(urlInput)
+		if (!item) return
+		setCover(item)
+		setUrlInput('')
+		toast.success('已设置封面')
+	}
+
 	const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = e.target.files
 		if (!files || files.length === 0) return
 
 		const resultImages = await addFiles(files)
-		if (resultImages && resultImages.length > 0) {
-			// 使用第一个图片作为封面
+		if (resultImages.length > 0) {
 			setCover(resultImages[0])
 			toast.success('已设置封面')
 		}
 
-		// 重置 input 以便可以选择相同的文件
 		e.target.value = ''
 	}
 
@@ -88,13 +90,32 @@ export function CoverSection({ delay = 0 }: CoverSectionProps) {
 					e.preventDefault()
 				}}
 				onDrop={handleCoverDrop}>
-				{!!coverPreviewUrl ? (
+				{coverPreviewUrl ? (
 					<img src={coverPreviewUrl} alt='cover preview' className='h-full w-full rounded-2xl object-cover' />
 				) : (
 					<div className='grid h-full w-full cursor-pointer place-items-center transition-colors hover:bg-white/60' onClick={handleClickUpload}>
 						<span className='text-3xl leading-none text-neutral-400'>+</span>
 					</div>
 				)}
+			</div>
+
+			<div className='mt-3 flex items-center gap-2'>
+				<input
+					type='text'
+					placeholder='https://...'
+					className='bg-card flex-1 rounded-lg border px-3 py-2 text-sm'
+					value={urlInput}
+					onChange={e => setUrlInput(e.target.value)}
+					onKeyDown={e => {
+						if (e.key === 'Enter') {
+							e.preventDefault()
+							handleSetCoverUrl()
+						}
+					}}
+				/>
+				<button type='button' className='rounded-lg border bg-white/70 px-3 py-2 text-sm' onClick={handleSetCoverUrl}>
+					使用链接
+				</button>
 			</div>
 		</motion.div>
 	)

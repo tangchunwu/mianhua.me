@@ -1,12 +1,12 @@
 import { motion } from 'motion/react'
+import { useRef } from 'react'
 import { useWriteStore } from '../stores/write-store'
 import { INIT_DELAY } from '@/consts'
-import { useRef } from 'react'
 
 const defaultText = 'text'
 
 export function WriteEditor() {
-	const { form, updateForm, images, addFiles } = useWriteStore()
+	const { form, updateForm, addFiles } = useWriteStore()
 	const textareaRef = useRef<HTMLTextAreaElement>(null)
 
 	const insertText = (text: string) => {
@@ -14,11 +14,9 @@ export function WriteEditor() {
 		if (!textarea) return
 
 		textarea.focus()
-		// Use execCommand to preserve undo/redo stack
 		const success = document.execCommand('insertText', false, text)
 
 		if (!success) {
-			// Fallback for browsers that don't support execCommand
 			const { selectionStart, selectionEnd, value } = textarea
 			const before = value.substring(0, selectionStart)
 			const after = value.substring(selectionEnd)
@@ -37,21 +35,16 @@ export function WriteEditor() {
 		const { selectionStart, selectionEnd, value } = textarea
 		const selectedText = value.substring(selectionStart, selectionEnd)
 
-		// Ctrl/Cmd + B: Toggle Bold
 		if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
 			e.preventDefault()
 			const before = value.substring(0, selectionStart)
 			const after = value.substring(selectionEnd)
-
-			// Check if already bold
 			const isBold = before.endsWith('**') && after.startsWith('**')
 
 			if (isBold && selectedText) {
-				// Remove bold - select including markers and replace
 				textarea.setSelectionRange(selectionStart - 2, selectionEnd + 2)
 				insertText(selectedText)
 			} else {
-				// Add bold
 				const text = selectedText || defaultText
 				insertText(`**${text}**`)
 				if (!selectedText) {
@@ -63,25 +56,19 @@ export function WriteEditor() {
 			return
 		}
 
-		// Ctrl/Cmd + I: Toggle Italic
 		if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
 			e.preventDefault()
 			const before = value.substring(0, selectionStart)
 			const after = value.substring(selectionEnd)
-
-			// Check if already italic
 			const isItalic = before.endsWith('*') && after.startsWith('*') && !(before.endsWith('**') && after.startsWith('**'))
 
 			if (isItalic && selectedText) {
-				// Remove italic and replace
 				textarea.setSelectionRange(selectionStart - 1, selectionEnd + 1)
 				insertText(selectedText)
 			} else {
-				// Add italic
 				const text = selectedText || defaultText
 				insertText(`*${text}*`)
 				if (!selectedText) {
-					// Select the default text
 					setTimeout(() => {
 						textarea.setSelectionRange(selectionStart + 1, selectionStart + 1 + defaultText.length)
 					}, 0)
@@ -90,12 +77,10 @@ export function WriteEditor() {
 			return
 		}
 
-		// Ctrl/Cmd + K: Link
 		if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
 			e.preventDefault()
 			const text = selectedText || defaultText
 			insertText(`[${text}](url)`)
-			// Select 'url' part
 			setTimeout(() => {
 				const urlStart = selectionStart + text.length + 3
 				textarea.setSelectionRange(urlStart, urlStart + 3)
@@ -103,14 +88,12 @@ export function WriteEditor() {
 			return
 		}
 
-		// Tab: Indent
 		if (e.key === 'Tab' && !e.shiftKey) {
 			e.preventDefault()
 			insertText('\t')
 			return
 		}
 
-		// Shift + Tab: Outdent
 		if (e.key === 'Tab' && e.shiftKey) {
 			e.preventDefault()
 			const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1
@@ -123,7 +106,6 @@ export function WriteEditor() {
 				textarea.setSelectionRange(lineStart, lineStart + 2)
 				insertText('')
 			}
-			return
 		}
 	}
 
@@ -136,19 +118,14 @@ export function WriteEditor() {
 			const item = items[i]
 			if (item.type.startsWith('image/')) {
 				const file = item.getAsFile()
-				if (file) {
-					imageFiles.push(file)
-				}
+				if (file) imageFiles.push(file)
 			}
 		}
 
 		if (imageFiles.length > 0) {
 			e.preventDefault()
-
 			const resultImages = await addFiles(imageFiles).catch(() => [])
-
-			if (resultImages && resultImages.length > 0) {
-				// 为所有处理后的图片（包括新添加和已存在的）生成 markdown
+			if (resultImages.length > 0) {
 				const markdowns = resultImages.map(item => (item.type === 'url' ? `![](${item.url})` : `![](local-image:${item.id})`)).join('\n')
 				insertText(markdowns)
 			}
@@ -162,20 +139,25 @@ export function WriteEditor() {
 			transition={{ delay: INIT_DELAY }}
 			className='bg-card flex min-h-[800px] w-[800px] flex-col rounded-[40px] border p-6 shadow'>
 			<div className='mb-3 flex gap-3'>
-				<input
-					type='text'
-					placeholder='标题'
-					className='bg-card flex-1 rounded-lg border px-3 py-2 text-sm'
-					value={form.title}
-					onChange={e => updateForm({ title: e.target.value })}
-				/>
-				<input
-					type='text'
-					placeholder='slug（xx-xx）'
-					className='bg-card w-[200px] rounded-lg border px-3 py-2 text-sm'
-					value={form.slug}
-					onChange={e => updateForm({ slug: e.target.value })}
-				/>
+				<div className='flex-1'>
+					<input
+						type='text'
+						placeholder='标题'
+						className='bg-card w-full rounded-lg border px-3 py-2 text-sm'
+						value={form.title}
+						onChange={e => updateForm({ title: e.target.value })}
+					/>
+				</div>
+				<div className='w-[260px]'>
+					<input
+						type='text'
+						placeholder='slug（建议 english-slug）'
+						className='bg-card w-full rounded-lg border px-3 py-2 text-sm'
+						value={form.slug}
+						onChange={e => updateForm({ slug: e.target.value })}
+					/>
+					<p className='mt-1 px-1 text-xs text-neutral-500'>不强制英文，但推荐小写英文、数字和连字符 `-`，链接最稳。</p>
+				</div>
 			</div>
 			<textarea
 				ref={textareaRef}

@@ -202,6 +202,26 @@ export async function removeBlog(slug: string): Promise<void> {
 	await writeBlogCategories(categories.filter(category => usedCategories.has(category)))
 }
 
+export async function readPublishedBlog(slug: string): Promise<{ slug: string; config: BlogConfig; markdown: string; cover?: string }> {
+	if (!slug) {
+		throw new Error('Missing slug')
+	}
+
+	await ensureBlogsDir()
+	const blogDir = getBlogDir(slug)
+	const config = await readJsonOrDefault<BlogConfig>(path.join(blogDir, 'config.json'), {})
+	const markdown = await fs.readFile(path.join(blogDir, 'index.md'), 'utf8').catch(() => {
+		throw new Error('Blog not found')
+	})
+
+	return {
+		slug,
+		config,
+		markdown,
+		cover: config.cover
+	}
+}
+
 export async function saveBlogListing(nextItems: BlogIndexItem[], categories: string[]): Promise<void> {
 	const previousItems = await readBlogIndex()
 	const previousSlugs = new Set(previousItems.map(item => item.slug))

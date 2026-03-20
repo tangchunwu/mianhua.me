@@ -18,28 +18,13 @@ export async function loadBlog(slug: string): Promise<LoadedBlog> {
 		throw new Error('Slug is required')
 	}
 
-	// Load config.json
-	let config: BlogConfig = {}
-	const configRes = await fetch(`/blogs/${encodeURIComponent(slug)}/config.json`)
-	if (configRes.ok) {
-		try {
-			config = await configRes.json()
-		} catch {
-			config = {}
-		}
+	const res = await fetch(`/api/blog/read/${encodeURIComponent(slug)}`, {
+		cache: 'no-store'
+	})
+	if (!res.ok) {
+		const data = await res.json().catch(() => ({}))
+		throw new Error(data?.message || 'Blog not found')
 	}
 
-	// Load index.md
-	const mdRes = await fetch(`/blogs/${encodeURIComponent(slug)}/index.md`)
-	if (!mdRes.ok) {
-		throw new Error('Blog not found')
-	}
-	const markdown = await mdRes.text()
-
-	return {
-		slug,
-		config,
-		markdown,
-		cover: config.cover
-	}
+	return res.json()
 }

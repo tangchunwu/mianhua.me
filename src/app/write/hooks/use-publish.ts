@@ -1,4 +1,5 @@
-﻿import { useCallback } from 'react'
+import { useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { pushBlog } from '../services/push-blog'
 import { deleteBlog } from '../services/delete-blog'
@@ -7,6 +8,7 @@ import { useAuthStore } from '@/hooks/use-auth'
 import { ensureAdminAuth } from '@/lib/admin-client'
 
 export function usePublish() {
+	const router = useRouter()
 	const { loading, setLoading, form, cover, images, mode, originalSlug } = useWriteStore()
 	const { isAuth, loginWithPassword } = useAuthStore()
 
@@ -14,7 +16,7 @@ export function usePublish() {
 		if (!(await ensureAdminAuth(isAuth, loginWithPassword))) return
 		try {
 			setLoading(true)
-			await pushBlog({
+			const result = await pushBlog({
 				form,
 				cover,
 				images,
@@ -24,13 +26,14 @@ export function usePublish() {
 
 			const successMsg = mode === 'edit' ? '更新成功' : '发布成功'
 			toast.success(successMsg)
+			router.push(`/blog/${result.slug}`)
 		} catch (err: any) {
 			console.error(err)
 			toast.error(err?.message || '操作失败')
 		} finally {
 			setLoading(false)
 		}
-	}, [form, cover, images, mode, originalSlug, setLoading, isAuth, loginWithPassword])
+	}, [form, cover, images, mode, originalSlug, setLoading, isAuth, loginWithPassword, router])
 
 	const onDelete = useCallback(async () => {
 		const targetSlug = originalSlug || form.slug

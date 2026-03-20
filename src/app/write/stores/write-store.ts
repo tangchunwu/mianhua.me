@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { toast } from 'sonner'
 import { hashFileSHA256 } from '@/lib/file-utils'
 import { loadBlog } from '@/lib/load-blog'
+import { normalizeExternalUrl } from '@/lib/url-utils'
 import type { PublishForm, ImageItem } from '../types'
 
 export const formatDateTimeLocal = (date: Date = new Date()): string => {
@@ -15,34 +16,26 @@ export const formatDateTimeLocal = (date: Date = new Date()): string => {
 }
 
 type WriteStore = {
-	// Mode state
 	mode: 'create' | 'edit'
 	originalSlug: string | null
 	setMode: (mode: 'create' | 'edit', originalSlug?: string) => void
 
-	// Form state
 	form: PublishForm
 	updateForm: (updates: Partial<PublishForm>) => void
 	setForm: (form: PublishForm) => void
 
-	// Image state
 	images: ImageItem[]
-	addUrlImage: (url: string) => void
+	addUrlImage: (url: string) => ImageItem | null
 	addFiles: (files: FileList | File[]) => Promise<ImageItem[]>
 	deleteImage: (id: string) => void
 
-	// Cover state
 	cover: ImageItem | null
 	setCover: (cover: ImageItem | null) => void
 
-	// Publish state
 	loading: boolean
 	setLoading: (loading: boolean) => void
 
-	// Load blog for editing
 	loadBlogForEdit: (slug: string) => Promise<void>
-
-	// Reset to create mode
 	reset: () => void
 }
 
@@ -58,27 +51,37 @@ const initialForm: PublishForm = {
 }
 
 export const useWriteStore = create<WriteStore>((set, get) => ({
-	// Mode state
 	mode: 'create',
 	originalSlug: null,
 	setMode: (mode, originalSlug) => set({ mode, originalSlug: originalSlug || null }),
 
-	// Form state
 	form: { ...initialForm },
 	updateForm: updates => set(state => ({ form: { ...state.form, ...updates } })),
 	setForm: form => set({ form }),
 
-	// Image state
 	images: [],
 	addUrlImage: url => {
-		const { images } = get()
-		const exists = images.some(it => it.type === 'url' && it.url === url)
-		if (exists) {
-			toast.info('该图片已在列表中')
-			return
+		const normalizedUrl = normalizeExternalUrl(url)
+		if (!normalizedUrl) {
+			toast.error('请输入有效的图片地址')
+			return null
 		}
-		const id = Math.random().toString(36).slice(2, 10)
-		set(state => ({ images: [{ id, type: 'url', url }, ...state.images] }))
+
+		const { images } = get()
+		const existingItem = images.find(it => it.type === 'url' && it.url === normalizedUrl) || null
+		if (existingItem) {
+			toast.info('该图片已在列表中')
+			return existingItem
+		}
+
+		const item: ImageItem = {
+			id: Math.random().toString(36).slice(2, 10),
+			type: 'url',
+			url: normalizedUrl
+		}
+
+		set(state => ({ images: [item, ...state.images] }))
+		return item
 	},
 	addFiles: async (files: FileList | File[]) => {
 		const { images } = get()
@@ -87,8 +90,8 @@ export const useWriteStore = create<WriteStore>((set, get) => ({
 
 		const existingHashes = new Map<string, ImageItem>(
 			images
-				.filter((it): it is Extract<ImageItem, { type: 'file'; hash?: string }> => it.type === 'file' && (it as any).hash)
-				.map(it => [(it as any).hash as string, it])
+				.filter((it): it is Extract<ImageItem, { type: 'file'; hash?: string }> => it.type === 'file' && 'hash' in it && !!it.hash)
+				.map(it => [it.hash as string, it])
 		)
 
 		const computed = await Promise.all(
@@ -108,20 +111,17 @@ export const useWriteStore = create<WriteStore>((set, get) => ({
 
 		const resultImages: ImageItem[] = []
 
-		// 处理已存在的图片
 		for (const { hash } of computed) {
 			if (existingHashes.has(hash)) {
 				resultImages.push(existingHashes.get(hash)!)
 			}
 		}
 
-		// 处理新图片
 		if (unique.length > 0) {
 			const newItems: ImageItem[] = unique.map(({ file, hash }) => {
 				const id = Math.random().toString(36).slice(2, 10)
 				const previewUrl = URL.createObjectURL(file)
-				const filename = file.name
-				return { id, type: 'file', file, previewUrl, filename, hash }
+				return { id, type: 'file', file, previewUrl, filename: file.name, hash }
 			})
 
 			set(state => ({ images: [...newItems, ...state.images] }))
@@ -137,53 +137,51 @@ export const useWriteStore = create<WriteStore>((set, get) => ({
 			for (const it of state.images) {
 				if (it.type === 'file' && it.id === id) {
 					URL.revokeObjectURL(it.previewUrl)
-
 					if (it.id === state.cover?.id) {
 						set({ cover: null })
 					}
 				}
 			}
+
 			return { images: state.images.filter(it => it.id !== id) }
 		}),
 
-	// Cover state
 	cover: null,
 	setCover: cover => set({ cover }),
 
-	// Publish state
 	loading: false,
 	setLoading: loading => set({ loading }),
 
-	// Load blog for editing
 	loadBlogForEdit: async (slug: string) => {
 		try {
 			set({ loading: true })
 			const blog = await loadBlog(slug)
 
-			// Parse images from markdown
 			const images: ImageItem[] = []
 			const imageRegex = /!\[.*?\]\((.*?)\)/g
-			let match
+			let match: RegExpExecArray | null
 			while ((match = imageRegex.exec(blog.markdown)) !== null) {
 				const url = match[1]
-				// Skip cover image and only collect content images
 				if (url && url !== blog.cover && !url.startsWith('local-image:')) {
-					// Check if already added
 					if (!images.some(img => img.type === 'url' && img.url === url)) {
-						const id = Math.random().toString(36).slice(2, 10)
-						images.push({ id, type: 'url', url })
+						images.push({
+							id: Math.random().toString(36).slice(2, 10),
+							type: 'url',
+							url
+						})
 					}
 				}
 			}
 
-			// Set cover
 			let cover: ImageItem | null = null
 			if (blog.cover) {
-				const coverId = Math.random().toString(36).slice(2, 10)
-				cover = { id: coverId, type: 'url', url: blog.cover }
+				cover = {
+					id: Math.random().toString(36).slice(2, 10),
+					type: 'url',
+					url: blog.cover
+				}
 			}
 
-			// Set form
 			set({
 				mode: 'edit',
 				originalSlug: slug,
@@ -211,9 +209,7 @@ export const useWriteStore = create<WriteStore>((set, get) => ({
 		}
 	},
 
-	// Reset to create mode
 	reset: () => {
-		// Revoke object URLs
 		const { images, cover } = get()
 		for (const img of images) {
 			if (img.type === 'file') {

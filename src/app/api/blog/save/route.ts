@@ -48,7 +48,7 @@ export async function POST(req: Request) {
 			images
 		})
 
-		return NextResponse.json({ ok: true })
+		return NextResponse.json({ ok: true, slug: form.slug })
 	} catch (error: any) {
 		return NextResponse.json({ message: error?.message || 'Failed to save blog' }, { status: 500 })
 	}

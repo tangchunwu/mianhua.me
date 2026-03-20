@@ -17,7 +17,7 @@ export type PushBlogParams = {
 	originalSlug?: string | null
 }
 
-export async function pushBlog(params: PushBlogParams): Promise<void> {
+export async function pushBlog(params: PushBlogParams): Promise<{ slug: string }> {
 	const { form, cover, images, mode = 'create', originalSlug } = params
 	if (!form?.slug) throw new Error('缺少 slug')
 
@@ -47,5 +47,10 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 	if (!res.ok) {
 		const data = await res.json().catch(() => ({}))
 		throw new Error(data?.message || '保存失败')
+	}
+
+	const data = await res.json().catch(() => null)
+	return {
+		slug: data?.slug || form.slug
 	}
 }
